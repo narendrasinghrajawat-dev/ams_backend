@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ArangoProvider } from '../database/arango.provider';
 import { aql } from 'arangojs';
 import * as bcrypt from 'bcrypt';
@@ -76,9 +76,71 @@ export class UserService {
         LIMIT 1
         RETURN u
     `);
-
+   
     return cursor.next();
   }
+   
+
+ async getAllUsers() {
+  const cursor = await this.db.query(aql`
+    FOR u IN users
+      SORT u.createdAt DESC
+      RETURN u
+  `);
+
+  const users = await cursor.all();
+
+  // Format response
+  const formatted = users.map((u) => ({
+    key: u._key,
+    id: u._id,
+    rev: u._rev,
+
+    firstName: u.firstName,
+    middleName: u.middleName,
+    lastName: u.lastName,
+
+    email: u.email,
+    countryCode: u.countryCode,
+    phoneNo: u.phoneNo,
+    username: u.username,
+
+    dob: u.dob,
+    genderId: u.genderId,
+    departmentId: u.departmentId,
+
+    role: u.role,
+    roleId: u.roleId,
+
+    address: u.address,
+
+    createdBy: u.createdBy,
+    createdAt: u.createdAt
+  }));
+
+  return {
+    message: "User list fetched successfully",
+    statusCode: 200,
+    count: formatted.length,
+    data: formatted
+  };
+}  
+  async deleteUser(key: string) {
+  try {
+    await this.users.remove(key);  // remove by _key
+
+    return {
+      message: "User deleted successfully",
+      statusCode: 200,
+      data: {
+        key: key,
+      }
+    };
+  } catch (err) {
+    throw new NotFoundException(`User with key ${key} not found`);
+  }
+}
+
 
   async validateUser(email: string, password: string) {
     const user = await this.findByEmail(email);

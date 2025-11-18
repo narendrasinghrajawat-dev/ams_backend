@@ -11,7 +11,7 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async login(email: string, password: string) {
     const user = await this.userService.validateUser(email, password);
@@ -24,18 +24,26 @@ export class AuthService {
     };
 
     return {
-    message: "Login successful",
-   statusCode: 200,
-    data: {
-      _key: user._key,
-      _rev: user._rev,
-      id: user._id,
-      token: this.jwtService.sign(payload),
-      userId: user._key,
-      email: user.email,
-      role: user.role,
-    }
-  };
+      message: "Login successful",
+      statusCode: 200,
+      data: {
+        _key: user._key,
+        _rev: user._rev,
+        id: user._id,
+        token: this.jwtService.sign(payload),
+        userId: user._key,
+        email: user.email,
+        role: user.role,
+      }
+    };
+  }
+
+  async getUserList() {
+    return this.userService.getAllUsers();
+  }
+
+  async deleteUser(key: string) {
+    return this.userService.deleteUser(key);
   }
 
   async createUser(dto: any, currentUser: any) {
