@@ -26,24 +26,47 @@ export class UserService {
     const savedUser = await this.users.save(userData);
 
     return {
-      message: "New user created successfully",
-      statusCode: 201,
-      data: {
-        key: savedUser._key,
-        _rev: savedUser._rev,
-        id: savedUser._id,
-        firstName: userData.firstName,
-        middleName: userData.middleName,
-        lastName: userData.lastName,
-        email: userData.email,
-        phoneNo: userData.phoneNo,
-        username: userData.username,
-        dob: userData.dob,
-        address: userData.address,
-        role: userData.role,
-        createdBy: userData.createdBy,
-      }
-    };
+    message: "New user created successfully",
+    statusCode: 201,
+    data: {
+      key: savedUser._key,
+      id: savedUser._id,
+      rev: savedUser._rev,
+
+      // PERSONAL DATA
+      firstName: userData.firstName,
+      middleName: userData.middleName,
+      lastName: userData.lastName,
+      dob: userData.dob,
+      genderId: userData.genderId,
+
+      // CONTACT
+      email: userData.email,
+      countryCode: userData.countryCode,
+      phoneNo: userData.phoneNo,
+      username: userData.username,
+
+      // ROLE / DEPARTMENT
+      role: userData.role,
+      roleId: userData.roleId,
+      departmentId: userData.departmentId,
+
+      // ADDRESS (Nested)
+      address: {
+        street: userData.address.street,
+        cityName: userData.address.cityName,
+        cityId: userData.address.cityId,
+        stateName: userData.address.stateName,
+        stateId: userData.address.stateId,
+        zipCode: userData.address.zipCode,
+        countryName: userData.address.countryName,
+        countryId: userData.address.countryId,
+      },
+
+      createdBy: userData.createdBy,
+      createdAt: userData.createdAt,
+    }
+  };
   }
 
   async findByEmail(email: string) {

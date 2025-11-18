@@ -1,42 +1,49 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  ValidateNested,
+  MinLength,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+class AddressDto {
+  @IsString() @IsNotEmpty() street: string;
+  @IsString() @IsNotEmpty() cityName: string;
+  @IsString() @IsNotEmpty() cityId: string;
+  @IsString() @IsNotEmpty() stateName: string;
+  @IsString() @IsNotEmpty() stateId: string;
+  @IsString() @IsNotEmpty() zipCode: string;
+  @IsString() @IsNotEmpty() countryName: string;
+  @IsString() @IsNotEmpty() countryId: string;
+}
 
 export class CreateUserDto {
+  @IsString() @IsNotEmpty() firstName: string;
+  @IsOptional() @IsString() middleName?: string;
+  @IsString() @IsNotEmpty() lastName: string;
+  @IsEmail() email: string;
+
+  // contact
+  @IsString() @IsNotEmpty() countryCode: string;
+  @IsString() @IsNotEmpty() phoneNo: string;
+  @IsString() @IsNotEmpty() username: string;
+
+  // NEW: password (required)
+  @IsString()
   @IsNotEmpty()
-  @IsString()
-  firstName: string;
-
-  @IsOptional()
-  @IsString()
-  middleName?: string;
-
-  @IsNotEmpty()
-  @IsString()
-  lastName: string;
-
-  @IsEmail()
-  email: string;
-
-  @IsNotEmpty()
-  @IsString()
-  phoneNo: string;
-
-  @IsNotEmpty()
-  @IsString()
-  username: string;
-
-  @IsNotEmpty()
-  @IsString()
+  @MinLength(6)               // optional: enforce min length
   password: string;
 
-  @IsOptional()
-  @IsString()
-  dob?: string;
+  @IsOptional() dob?: string;
+  @IsString() @IsNotEmpty() genderId: string;
+  @IsString() @IsNotEmpty() departmentId: string;
+  @IsString() @IsNotEmpty() role: string;
+  @IsString() @IsNotEmpty() roleId: string;
 
-  @IsOptional()
-  @IsString()
-  address?: string;
-
+  @ValidateNested()
+  @Type(() => AddressDto)
   @IsNotEmpty()
-  @IsString()
-  role: string;        // "manager" | "user"
+  address: AddressDto;
 }

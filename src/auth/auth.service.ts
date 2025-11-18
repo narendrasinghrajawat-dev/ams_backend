@@ -39,8 +39,8 @@ export class AuthService {
   }
 
   async createUser(dto: any, currentUser: any) {
-    if (currentUser.role !== Role.Manager)
-      throw new ForbiddenException('Only manager can create users');
+    if (currentUser.role !== Role.Admin)
+      throw new ForbiddenException('Only admin can create users');
 
     return this.userService.createUser(dto, currentUser.sub);
 

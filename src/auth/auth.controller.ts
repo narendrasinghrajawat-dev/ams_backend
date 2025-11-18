@@ -24,7 +24,7 @@ login(@Body() body: { email: string; password: string }) {
 
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.Manager)
+  @Roles(Role.Admin)
   @Post('create-user')
   createUser(@Body() dto: CreateUserDto, @Request() req: any) {
     return this.authService.createUser(dto, req.user);
