@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { Role } from './roles.enum';
 import { STATUS_CODES } from 'http';
+import { stat } from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -24,8 +25,11 @@ export class AuthService {
 
     return {
     message: "Login successful",
-    STATUS_CODES: 200,
+   statusCode: 200,
     data: {
+      _key: user._key,
+      _rev: user._rev,
+      id: user._id,
       token: this.jwtService.sign(payload),
       userId: user._key,
       email: user.email,
@@ -38,7 +42,8 @@ export class AuthService {
     if (currentUser.role !== Role.Manager)
       throw new ForbiddenException('Only manager can create users');
 
-    return this.userService.createUser(dto);
+    return this.userService.createUser(dto, currentUser.sub);
+
   }
 
 }

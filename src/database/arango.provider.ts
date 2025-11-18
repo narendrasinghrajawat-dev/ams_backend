@@ -7,11 +7,11 @@ export class ArangoProvider {
 
   constructor() {
     this.db = new Database({
-      url: "http://localhost:8529",
-      databaseName: "AMS",   
+      url: "https://testdb-drcongo.egov.africa:8529/",
+      databaseName: "AMS-Dev",   
       auth: {
         username: "root",
-        password: "root",
+        password: "Dr5YDR6ijnfnODP5QDle34M",
       }
     });
   }

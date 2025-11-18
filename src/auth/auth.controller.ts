@@ -4,6 +4,7 @@ import { JwtAuthGuard } from './jwt.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 import { Role } from './roles.enum';
+import { CreateUserDto } from 'src/dto/create-user.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +26,7 @@ login(@Body() body: { email: string; password: string }) {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Manager)
   @Post('create-user')
-  createUser(@Body() dto: any, @Request() req: any) {
+  createUser(@Body() dto: CreateUserDto, @Request() req: any) {
     return this.authService.createUser(dto, req.user);
   }
 
