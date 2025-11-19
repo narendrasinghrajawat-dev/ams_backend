@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ArangoProvider } from '../database/arango.provider';
 import { aql } from 'arangojs';
 import * as bcrypt from 'bcrypt';
@@ -7,12 +7,14 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   private db;
   private users;
+  
 
-  constructor(private arango: ArangoProvider) {
-    this.db = this.arango.getDb();
-    this.users = this.db.collection("users");
-  }
-
+  constructor(
+  @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
+) {
+  this.db = this.arango.getDb();
+  this.users = this.db.collection("users");
+}
   async createUser(data: any, managerId: string) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 

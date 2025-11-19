@@ -3,7 +3,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ArangoProvider {
-  private db: Database;
+ private db: any;  // Database() constructor you're using returns a Database-like object
+
 
   constructor() {
     this.db = new Database({

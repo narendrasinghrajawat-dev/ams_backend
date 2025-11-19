@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/c
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { Role } from './roles.enum';
+import{UserLoginService} from '../user/user-login/login.service'
 import { STATUS_CODES } from 'http';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
+    private userLoginService:UserLoginService
   ) { }
 
   async login(email: string, password: string) {
@@ -54,6 +56,9 @@ export class AuthService {
   }
   async updateUser(key: string, dto: any) {
     return this.userService.updateUser(key, dto);
+  }
+  async UserLogin(dto: any) {
+    return this.userLoginService.login(dto);
   }
 
 }

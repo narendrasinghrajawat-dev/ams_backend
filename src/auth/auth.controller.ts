@@ -6,6 +6,7 @@ import { RolesGuard } from './roles.guard';
 import { Role } from './roles.enum';
 import { CreateUserDto } from 'src/dto/create-user.dto';
 import { UpdateUserDto } from 'src/dto/update-user-dto';
+import { LoginDto } from 'src/user/user-login/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,5 +55,11 @@ export class AuthController {
   createUser(@Body() dto: CreateUserDto, @Request() req: any) {
     return this.authService.createUser(dto, req.user);
   }
+   
+ 
+  @Post("user-login")
+async UserLogin(@Body() dto: LoginDto) {
+  return this.authService.UserLogin(dto);
+}
 
 }
