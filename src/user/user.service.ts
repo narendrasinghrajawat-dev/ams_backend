@@ -159,4 +159,36 @@ export class UserService {
 
     return null;
   }
+
+  async updateUser(key: string, dto: any) {
+  const existing = await this.users.document(key).catch(() => null);
+
+  if (!existing) {
+    throw new NotFoundException(`User with key ${key} not found`);
+  }
+
+  // Merge existing values with new values
+  const updatedUser = {
+    ...existing,
+    ...dto,
+    address: {
+      ...existing.address,
+      ...(dto.address || {})
+    },
+    updatedAt: new Date().toISOString()
+  };
+
+  // Prevent accidental password overwrite
+  delete updatedUser.password;
+
+  // Save patch update
+  await this.users.update(key, updatedUser);
+
+  return {
+    message: "User updated successfully",
+    statusCode: 200,
+    data: updatedUser
+  };
+}
+
 }

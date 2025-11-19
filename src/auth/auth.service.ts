@@ -3,7 +3,6 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { Role } from './roles.enum';
 import { STATUS_CODES } from 'http';
-import { stat } from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -52,6 +51,9 @@ export class AuthService {
 
     return this.userService.createUser(dto, currentUser.sub);
 
+  }
+  async updateUser(key: string, dto: any) {
+    return this.userService.updateUser(key, dto);
   }
 
 }
