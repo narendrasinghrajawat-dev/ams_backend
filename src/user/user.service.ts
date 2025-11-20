@@ -31,13 +31,13 @@ export class UserService {
     message: "New user created successfully",
     statusCode: 201,
     data: {
-      key: savedUser._key,
-      id: savedUser._id,
-      rev: savedUser._rev,
+      _key: savedUser._key,
+      _id: savedUser._id,
+      _rev: savedUser._rev,
 
       // PERSONAL DATA
       firstName: userData.firstName,
-      middleName: userData.middleName,
+      middleName: userData.middleName, 
       lastName: userData.lastName,
       dob: userData.dob,
       genderId: userData.genderId,
@@ -86,17 +86,18 @@ export class UserService {
  async getAllUsers() {
   const cursor = await this.db.query(aql`
     FOR u IN users
-      SORT u.createdAt DESC
-      RETURN u
+  FILTER u.role == "user"
+  SORT u.createdAt DESC
+  RETURN u
   `);
 
   const users = await cursor.all();
 
   // Format response
-  const formatted = users.map((u) => ({
-    key: u._key,
+  const formatted = users.map((u) => ({ 
+    _key: u._key,
     id: u._id,
-    rev: u._rev,
+    _rev: u._rev,
 
     firstName: u.firstName,
     middleName: u.middleName,
@@ -146,9 +147,10 @@ export class UserService {
 
   async validateUser(email: string, password: string) {
     const user = await this.findByEmail(email);
+
     if (!user) return null;
 
-    // Case 1: hashed password
+    // // Case 1: hashed password
     if (user.password.startsWith("$2b$")) {
       const match = await bcrypt.compare(password, user.password);
       return match ? user : null;
@@ -164,7 +166,7 @@ export class UserService {
 
   async updateUser(key: string, dto: any) {
   const existing = await this.users.document(key).catch(() => null);
-
+ 
   if (!existing) {
     throw new NotFoundException(`User with key ${key} not found`);
   }

@@ -15,9 +15,12 @@ export class AuthService {
   ) { }
 
   async login(email: string, password: string) {
+    console.log('start login si te h');
+    console.log(`email is teh ${email} passwrod is teh ${password}`)
+
     const user = await this.userService.validateUser(email, password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
-
+    
     const payload = {
       sub: user._key,
       role: user.role,
