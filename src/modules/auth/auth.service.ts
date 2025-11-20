@@ -1,8 +1,8 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../user/user.service';
+import { UserService } from '../../user/user.service';
 import { Role } from './roles.enum';
-import{UserLoginService} from '../user/user-login/login.service'
+import{UserLoginService} from '../../user/user-login/login.service'
 import { STATUS_CODES } from 'http';
 
 @Injectable()
