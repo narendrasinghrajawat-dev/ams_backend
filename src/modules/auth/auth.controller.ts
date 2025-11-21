@@ -30,7 +30,7 @@ export class AuthController {
   getUserList() {
     return this.authService.getUserList();
   }
-
+  
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
   @Delete('delete-user/:key')

@@ -28,16 +28,11 @@ export class AuthService {
     };
 
     return {
-      message: "Login successful",
+      message: "Login successful", 
       statusCode: 200,
       data: {
-        _key: user._key,
-        _rev: user._rev,
-        id: user._id,
+        ...user,
         token: this.jwtService.sign(payload),
-        userId: user._key,
-        email: user.email,
-        role: user.role,
       }
     };
   }
@@ -46,7 +41,7 @@ export class AuthService {
     return this.userService.getAllUsers();
   }
 
-  async deleteUser(key: string) {
+  async deleteUser(key: string) { 
     return this.userService.deleteUser(key);
   }
 

@@ -10,29 +10,31 @@ export class AttendanceService {
     return this.arangoProvider.getDb();
   }
 
-  async punch(user: any, dto: any) {
+  async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
     const collection = db.collection('attendance');
 
     const punchRecord = {
-      userId: user._key,
-      punchType: dto.punchType,       
+      userKey: dto.userKey,
+      punchType: dto.punchType, 
+      punchTime : dto.punchTime,
+      punchDate : dto.punchDate,      
       lat: dto.lat,
       long: dto.long,
       deviceInformation: dto.deviceInformation,
-      timestamp: new Date().toISOString()
-    };
-
+      createdDate: new Date().toISOString()
+    };  
+  
     const result = await collection.save(punchRecord);
-
+    
     return {
       message: dto.punchType === "1" ? "Punch In Successful" : "Punch Out Successful",
-      statusCode: 200,
+      statusCode: 200, 
       data: {
-        punchId: result._key,
+        _key: result._key,
         
         ...punchRecord
-      }
+      } 
     };
-  }
+  } 
 }

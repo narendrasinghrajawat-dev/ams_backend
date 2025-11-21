@@ -1,21 +1,16 @@
-import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ValidateNested, IsNotEmpty, IsString } from 'class-validator';
+import { DeviceInfoDto } from './device_info.dto';
 
 export class PunchDto {
-  @IsString() @IsNotEmpty()
-  punchType: string;   // "1" = IN, "2" = OUT
+  @IsString() @IsNotEmpty() userKey: string;
+  @IsString() @IsNotEmpty() punchType: string;
+  @IsString() @IsNotEmpty() punchTime: string;
+  @IsString() @IsNotEmpty() punchDate: string;
+  @IsString() lat: string;
+  @IsString() long: string;
 
-  @IsNumber()
-  lat: number;
-
-  @IsNumber()
-  long: number;
-
-  deviceInformation: {
-    os: string;
-    version: string;
-    sdkInt: number;
-    model: string;
-    brand: string;
-    device: string;
-  };
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  deviceInformation: DeviceInfoDto;
 }
