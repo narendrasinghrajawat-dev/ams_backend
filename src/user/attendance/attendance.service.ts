@@ -1,19 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { aql } from 'arangojs';
-import { PunchDto } from './dto/punch.dto';
+import { PunchDto } from 'src/dto/punch.dto';
 
 @Injectable()
 export class AttendanceService {
+
   constructor(@Inject('ARANGO_CONNECTION') private arangoProvider: any ) {}
 
   private getDb() {
     return this.arangoProvider.getDb();
-  }
-
+  } 
+  
   async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
     const collection = db.collection('attendance');
-
+ 
     const punchRecord = {
       userKey: dto.userKey,
       punchType: dto.punchType, 
@@ -25,7 +26,7 @@ export class AttendanceService {
       createdDate: new Date().toISOString()
     };  
   
-    const result = await collection.save(punchRecord);
+    const result = await collection.save(punchRecord); 
     
     return {
       message: dto.punchType === "1" ? "Punch In Successful" : "Punch Out Successful",
@@ -37,4 +38,26 @@ export class AttendanceService {
       } 
     };
   } 
+
+
+     async getAllActivities(userKey: string) {
+    const db = this.getDb();
+
+    const cursor = await db.query(aql`
+      FOR att IN attendance
+        FILTER att.userKey == ${userKey}
+        SORT att.punchDate DESC, att.punchTime DESC
+        RETURN att
+    `);
+
+    const activities = await cursor.all();
+
+    return {
+      message: 'Get All Activities fetched successfully',
+      statusCode: 200,
+      count: activities.length,
+      data: activities,
+    };
+  }
+
 }

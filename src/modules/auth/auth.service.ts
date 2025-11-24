@@ -1,62 +1,83 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
+import { ArangoProvider } from 'src/database/arango.provider';
+import { aql } from 'arangojs';
+import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../../user/user.service';
-import { Role } from './roles.enum';
-import{UserLoginService} from '../../user/user-login/login.service'
-import { STATUS_CODES } from 'http';
+import { LoginDto } from 'src/dto/login.dto';
 
 @Injectable()
 export class AuthService {
+  private db: any;
+    private users;
 
-  constructor(
-    private userService: UserService,
-    private jwtService: JwtService,
-    private userLoginService:UserLoginService
-  ) { }
+    private loginUsers;
+    private passwordsOfUsers;
 
-  async login(email: string, password: string) {
-    console.log('start login si te h');
-    console.log(`email is teh ${email} passwrod is teh ${password}`)
+    constructor(
+        @Inject("ARANGO_CONNECTION") private readonly arango: ArangoProvider,
+        private jwtService: JwtService,
+    ) {
+        this.db = this.arango.getDb();
+        this.users = this.db.collection("users"); 
+        this.loginUsers = this.db.collection("loginUsers");
+        this.passwordsOfUsers = this.db.collection("passwordsOfUsers");
+    }
 
-    const user = await this.userService.validateUser(email, password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    
-    const payload = {
-      sub: user._key,
-      role: user.role,
-      email: user.email,
+
+    async login(dto: LoginDto) {
+        const { email, password, lat, long, deviceInformation } = dto;
+
+        const cursor = await this.db.query(aql`
+      FOR u IN users
+        FILTER u.email == ${email}
+        LIMIT 1
+        RETURN u
+    `);
+
+
+        const user = await cursor.next();
+        if (!user) throw new UnauthorizedException("Invalid email or password");
+        const payload = {
+            sub: user._key,
+            role: user.role,
+            email: user.email,
+        };
+        
+        const match = user.password.startsWith("$2b$")
+            ? await bcrypt.compare(password, user.password)
+            : user.password === password;
+        
+        if (!match) throw new UnauthorizedException("Invalid email or password");
+
+        const loginRecord = {
+            userId: user._id,
+            email: user.email,
+            loginAt: new Date().toISOString(),
+            lat,
+            long,
+            deviceInformation,
+            status: "success",
+        };
+        
+        const passwordRecord = {
+            userId: user._id,
+            email: user.email,
+            password: user.password,
+            changedAt: new Date().toISOString(),
+        }
+        await this.loginUsers.save(loginRecord);
+        await this.passwordsOfUsers.save(passwordRecord);
+           
+        const fullUser = { ...user, lat : lat, long: long, deviceInformation : deviceInformation, token: this.jwtService.sign(payload),};
+        delete fullUser.password;
+       const data = {...fullUser , token: this.jwtService.sign(payload) , loginAt: loginRecord.loginAt};
+       
+        return {
+            message: "Login successful",
+            statusCode: 200,
+            data: data,
+            
+        }
     };
-
-    return {
-      message: "Login successful", 
-      statusCode: 200,
-      data: {
-        ...user,
-        token: this.jwtService.sign(payload),
-      }
-    };
-  }
-
-  async getUserList() {
-    return this.userService.getAllUsers();
-  }
-
-  async deleteUser(key: string) { 
-    return this.userService.deleteUser(key);
-  }
-
-  async createUser(dto: any, currentUser: any) {
-    if (currentUser.role !== Role.Admin)
-      throw new ForbiddenException('Only admin can create users');
-
-    return this.userService.createUser(dto, currentUser.sub);
-
-  }
-  async updateUser(key: string, dto: any) {
-    return this.userService.updateUser(key, dto);
-  }
-  async UserLogin(dto: any) {
-    return this.userLoginService.login(dto);
-  }
 
 }

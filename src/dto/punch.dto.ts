@@ -13,4 +13,5 @@ export class PunchDto {
   @ValidateNested()
   @Type(() => DeviceInfoDto)
   deviceInformation: DeviceInfoDto;
-}
+} 
+ 

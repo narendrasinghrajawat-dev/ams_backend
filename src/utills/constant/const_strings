@@ -1,0 +1,7 @@
+
+
+@Injectable()
+export  class AppConstStrings{
+
+    static const String auth = 'auth';
+} 

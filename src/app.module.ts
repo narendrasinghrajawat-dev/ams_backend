@@ -4,12 +4,17 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DatabaseModule } from './database/database.module';
-import { UserLoginModule } from './user/user-login/login.module';
-import { AttendanceModule } from './modules/attendance/attendance.module';
+import { AdminModule } from './admin/admin.module';
+import { AttendanceModule } from './user/attendance/attendance.module';
+import { LeavesModule } from './user/leaves/leaves.module';
 
-@Module({
-  imports: [UserModule, AuthModule ,DatabaseModule ,UserLoginModule ,AttendanceModule],
-  controllers: [AppController,],
+@Module({ 
+  imports: [UserModule, AdminModule, AuthModule ,DatabaseModule  ,AttendanceModule, LeavesModule],
+  controllers: [AppController,], 
   providers: [AppService],
-})
-export class AppModule {}
+}) 
+export class AppModule {
+
+}
+
+  

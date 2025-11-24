@@ -1,65 +1,19 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt.guard';
-import { Roles } from './roles.decorator';
-import { RolesGuard } from './roles.guard';
-import { Role } from './roles.enum';
-import { CreateUserDto } from 'src/dto/create-user.dto';
-import { UpdateUserDto } from 'src/dto/update-user-dto';
-import { LoginDto } from 'src/user/user-login/login.dto';
+import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
+import { LoginDto } from 'src/dto/login.dto';
+import { AuthService } from 'src/modules/auth/auth.service';
 
 @Controller('auth')
 export class AuthController {
-
-  constructor(private authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() body: { email: string; password: string }) {
-    const { email, password } = body;
-
+  async login(@Body() loginDto: LoginDto) {
+    const { email, password } = loginDto;
     if (!email || !password) {
-      throw new BadRequestException("Email and password are required");
+      throw new BadRequestException('Email and password are required');
     }
-
-    return this.authService.login(email, password);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.Admin)
-  @Get('user-list')
-  getUserList() {
-    return this.authService.getUserList();
-  }
   
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.Admin)
-  @Delete('delete-user/:key')
-  deleteUser(@Param('key') key: string) {
-    return this.authService.deleteUser(key);
+    // pass full DTO so service can use lat/long/deviceInformation if needed
+    return this.authService.login(loginDto);
   }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.Admin)     // Only manager can update
-  @Patch('update-user/:key')
-  updateUser(
-    @Param('key') key: string,
-    @Body() dto: UpdateUserDto
-  ) {
-    return this.authService.updateUser(key, dto);
-  }
-
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.Admin)
-  @Post('create-user')
-  createUser(@Body() dto: CreateUserDto, @Request() req: any) {
-    return this.authService.createUser(dto, req.user);
-  }
-   
- 
-  @Post("user-login")
-async UserLogin(@Body() dto: LoginDto) {
-  return this.authService.UserLogin(dto);
-}
-
-}
+} 

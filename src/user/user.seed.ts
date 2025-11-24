@@ -13,13 +13,13 @@ export async function seedAdminUser(db) {
     console.log("⚠️ No users found. Creating default manager...");
 
     const hashedPassword = await bcrypt.hash("admin123", 10);
-
+ 
     await db.collection("users").save({
       name: "Default Admin",
       email: "admin@gmail.com",
       password: hashedPassword,
       role: "manager"
-    });
+    }); 
 
     console.log("✔ Default manager created:");
     console.log("   Email: admin@gmail.com");
