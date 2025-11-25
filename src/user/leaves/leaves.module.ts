@@ -10,7 +10,7 @@ import { LeavesController } from "./leaves.controller";
     controllers : [LeavesController, ],
     providers : [LeavesService],
     exports : [LeavesService]
-}
+} 
 )
 export class LeavesModule{
 
