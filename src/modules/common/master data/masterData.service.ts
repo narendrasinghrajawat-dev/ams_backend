@@ -1,29 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Database } from 'arangojs';
+import { ArangoProvider } from 'src/database/arango.provider';
 
 @Injectable()
 export class MasterDataService {
-  private db: Database;
+private db;
+  private masterData;
 
-  constructor() {
-    const connection = new Database({
-      url: process.env.ARANGO_URL!, 
-      auth: {
-        username: process.env.ARANGO_USERNAME!,
-        password: process.env.ARANGO_PASSWORD!,
-      }
-    });
-
-    this.db = connection.database(process.env.ARANGO_DB!);
-    console.log("DB URL:", process.env.ARANGO_URL);
-console.log("DB:", process.env.ARANGO_DB);
-console.log("USER:", process.env.ARANGO_USERNAME);
-console.log("PASS:", process.env.ARANGO_PASSWORD);
-  }
-
+  constructor(
+    @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
+  ) {
+    this.db = this.arango.getDb();
+    this.masterData = this.db.collection('masterData');
+  }  
+  
   async getMasterData() {
     const collection = this.db.collection('masterData');
 
     return await collection.document('master_data');
   }
-}
+} 

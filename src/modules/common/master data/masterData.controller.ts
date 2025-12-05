@@ -10,3 +10,4 @@ export class MasterDataController {
     return this.masterDataService.getMasterData();
    }
 }
+   

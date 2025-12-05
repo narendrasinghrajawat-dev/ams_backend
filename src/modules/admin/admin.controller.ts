@@ -44,6 +44,6 @@ export class AdminController{
       ) {
         return this.adminService.updateUser(key, dto);
 
-        } 
-
+        }  
+ 
 }
