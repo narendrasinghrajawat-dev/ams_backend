@@ -1,6 +1,6 @@
 import { Inject, Injectable, BadRequestException, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { aql } from "arangojs";
-import { ApplyLeavesDto } from "../../modules/user/leaves/dto/apply_leaves.dto";
+import { ApplyLeavesDto } from "../leaves/dto/apply_leaves.dto";
 import { ArangoProvider } from "src/database/arango.provider";
 
 @Injectable()

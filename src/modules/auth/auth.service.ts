@@ -3,7 +3,7 @@ import { ArangoProvider } from 'src/database/arango.provider';
 import { aql } from 'arangojs';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { LoginDto } from 'src/dto/login.dto';
+import { LoginDto } from '../user/attendance/dto/login.dto';
 
 @Injectable()
 export class AuthService {

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { aql } from 'arangojs';
-import { PunchDto } from 'src/dto/punch.dto';
+import { PunchDto } from '../../user/attendance/dto/punch.dto';
 
 @Injectable()
 export class AttendanceService {

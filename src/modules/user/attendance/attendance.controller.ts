@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
-import { PunchDto } from 'src/dto/punch.dto';
+import { PunchDto } from '../../user/attendance/dto/punch.dto';
 import { JwtAuthGuard } from 'src/modules/auth/jwt.guard';
 
 @Controller('attendance')

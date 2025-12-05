@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsString, IsNotEmpty, IsObject, IsNumber, ValidateNested } from "class-validator";
-import { DeviceInfoDto } from "./device_info.dto";
+import { DeviceInfoDto } from "../../../common/common dto/device_info.dto";
 
 export class LoginDto {
   @IsString()

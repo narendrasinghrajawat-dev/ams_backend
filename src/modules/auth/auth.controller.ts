@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
-import { LoginDto } from 'src/dto/login.dto';
+import { LoginDto } from '../user/attendance/dto/login.dto';
 import { AuthService } from 'src/modules/auth/auth.service';
 
 @Controller('auth')
