@@ -4,9 +4,9 @@ import { Roles } from "src/modules/auth/roles.decorator";
 import { Role } from "src/modules/auth/roles.enum";
 import { RolesGuard } from "src/modules/auth/roles.guard";
 import { AdminService } from "./admin_service";
-import { CreateUserDto } from "src/dto/create-user.dto";
-import { UpdateUserDto } from "src/dto/update-user-dto";
-import { LoginDto } from "src/dto/login.dto";
+import { CreateUserDto } from "src/modules/user/user-dto/create-user.dto";
+import { UpdateUserDto } from "src/modules/user/user-dto/update-user-dto";
+import { LoginDto } from "../user/attendance/dto/login.dto";
 
 
 @Controller('admin')

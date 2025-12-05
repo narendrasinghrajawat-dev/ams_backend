@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { ValidateNested, IsNotEmpty, IsString } from 'class-validator';
-import { DeviceInfoDto } from './device_info.dto';
+import { DeviceInfoDto } from '../../../../common dto/device_info.dto';
 
 export class PunchDto {
   @IsString() @IsNotEmpty() userKey: string;

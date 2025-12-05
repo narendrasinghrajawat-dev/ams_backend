@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Request } from "@nestjs/common";
 import { LeavesService } from "./leaves.service";
-import { ApplyLeavesDto } from "./dto/apply_leaves.dto";
+import { ApplyLeavesDto } from "../../modules/user/leaves/dto/apply_leaves.dto";
 
 @Controller('leaves')
 export class LeavesController {

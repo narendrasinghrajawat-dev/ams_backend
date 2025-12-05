@@ -13,7 +13,7 @@ export class AttendanceService {
   
   async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
-    const collection = db.collection('attendance');
+    const collection = db.collection('attendance');      
  
     const punchRecord = {
       userKey: dto.userKey,

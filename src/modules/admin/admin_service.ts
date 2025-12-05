@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ArangoProvider } from '../database/arango.provider';
+import { ArangoProvider } from '../../database/arango.provider';
 import * as bcrypt from 'bcrypt';
 import { aql } from 'arangojs';
 
