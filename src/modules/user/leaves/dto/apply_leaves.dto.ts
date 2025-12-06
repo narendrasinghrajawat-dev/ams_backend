@@ -1,41 +1,81 @@
-import { IsString, IsNotEmpty, IsObject, IsNumber, ValidateNested, isNotEmpty, IsBoolean } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsBoolean,
+  IsOptional,
+} from "class-validator";
 
+export class ApplyLeavesDto {
+  // Optional fields for backend-identification
+  @IsString()
+  @IsOptional()
+  key?: string;
 
-export class ApplyLeavesDto{
+  @IsString()
+  @IsOptional()
+  id?: string;
 
-    @IsString()
-    @IsNotEmpty()
-    userKey : string;
+  @IsString()
+  @IsOptional()
+  rev?: string;
 
-    @IsString()
-    @IsNotEmpty()
-    startDate : string;
+  // Required fields for creating a leave request
+  @IsString()
+  @IsNotEmpty()
+  userKey: string;
 
-    @IsString()
-    @IsNotEmpty()
-    endDate : string;
+  @IsString()
+  @IsNotEmpty()
+  startDate: string;
 
-    @IsString()
-    @IsNotEmpty()
-    reason : string;
-    
-    
-    @IsString()
-    @IsNotEmpty()
-    leaveType : string;
+  @IsString()
+  @IsNotEmpty()
+  endDate: string;
 
-    @IsNumber()
-    @IsNotEmpty()
-    numberOfLeaves : number;
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    isFullDay : boolean;
-    
-    
-    @IsBoolean()
-    @IsNotEmpty()
-    isHalfDay : boolean;
-    
+  @IsString()
+  @IsNotEmpty()
+  leaveType: string;
 
+  @IsNumber()
+  @IsNotEmpty()
+  numberOfLeaves: number;
+
+  @IsString()
+  @IsNotEmpty()
+  leaveDurationsType: string; 
+
+  @IsBoolean()
+  @IsNotEmpty()
+  isActive: boolean;
+
+  // Optional backend fields
+  @IsString()
+  @IsOptional()
+  createdDate?: string;
+
+  @IsString()
+  @IsOptional()
+  modifiedDate?: string;
+
+  // Fields set by system/approver
+  @IsString()
+  @IsOptional()
+  leaveStatus?: string; // Pending, Approved, Rejected
+
+  @IsString()
+  @IsOptional()
+  actionDate?: string;
+
+  @IsString()
+  @IsOptional()
+  approverByName?: string;
+
+  @IsString()
+  @IsOptional()
+  approverByKey?: string;
 }

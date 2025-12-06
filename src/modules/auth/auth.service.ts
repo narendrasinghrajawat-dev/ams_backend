@@ -4,6 +4,7 @@ import { aql } from 'arangojs';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from '../user/attendance/dto/login.dto';
+import { COLLECTIONS } from 'src/utills/constant/const_collections';
 
 @Injectable()
 export class AuthService {
@@ -18,9 +19,9 @@ export class AuthService {
         private jwtService: JwtService,
     ) {
         this.db = this.arango.getDb();
-        this.users = this.db.collection("users"); 
-        this.loginUsers = this.db.collection("loginUsers");
-        this.passwordsOfUsers = this.db.collection("passwordsOfUsers");
+        this.users = this.db.collection(COLLECTIONS.USERS); 
+        this.loginUsers = this.db.collection(COLLECTIONS.LOGIN_USERS);
+        this.passwordsOfUsers = this.db.collection(COLLECTIONS.PASSWORDS_OF_USERS);
     }
 
 

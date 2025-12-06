@@ -2,6 +2,7 @@ import { Inject, Injectable, BadRequestException, NotFoundException, ForbiddenEx
 import { aql } from "arangojs";
 import { ApplyLeavesDto } from "../leaves/dto/apply_leaves.dto";
 import { ArangoProvider } from "src/database/arango.provider";
+import {COLLECTIONS} from "../../../utills/constant/const_collections";
 
 @Injectable()
 export class LeavesService {
@@ -10,7 +11,7 @@ export class LeavesService {
 
   constructor(@Inject('ARANGO_CONNECTION') private readonly arangoProvider: ArangoProvider) {
     this.db = this.arangoProvider.getDb();
-    this.leavesCollection = this.db.collection('applyLeaves');
+    this.leavesCollection = this.db.collection(COLLECTIONS.LEAVES);
   }
 
   // Get leaves for a user key
@@ -53,18 +54,27 @@ export class LeavesService {
       throw new BadRequestException('fromDate cannot be after toDate');
     }
 
-    const leaveRecord: any = {
-      userKey,
-      fromDate: dto.startDate,
-      toDate: dto.endDate,
-      type: dto.leaveType,
-      reason: dto.reason || null,
-      ishalfDay: !!dto.isHalfDay,
-      isFullDay: !!dto.isFullDay,
-      status: 'pending', // admin will approve/reject later
-      appliedAt: new Date().toISOString(),
-      // you may want to store computed days count, e.g. days: ...
-    };
+   const leaveRecord: any = {
+  userKey: dto.userKey,
+  startDate: dto.startDate,
+  endDate: dto.endDate,
+  leaveType: dto.leaveType,
+  reason: dto.reason || null,
+
+  numberOfLeaves: dto.numberOfLeaves,
+  leaveDurationsType: dto.leaveDurationsType, // "Full Day" | "Half Day"
+
+  isActive: dto.isActive ?? true,
+
+  createdDate: new Date().toISOString(),
+  modifiedDate: null,
+
+  leaveStatus: "Pending",
+  actionDate: null,
+  approverByName: null,
+  approverByKey: null,
+};
+
 
     const saved = await this.leavesCollection.save(leaveRecord);
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { aql } from 'arangojs';
 import { PunchDto } from '../../user/attendance/dto/punch.dto';
+import { COLLECTIONS } from 'src/utills/constant/const_collections';
 
 @Injectable()
 export class AttendanceService {
@@ -13,7 +14,7 @@ export class AttendanceService {
   
   async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
-    const collection = db.collection('attendance');      
+    const collection = db.collection(COLLECTIONS.ATTENDANCE);      
  
     const punchRecord = {
       userKey: dto.userKey,
