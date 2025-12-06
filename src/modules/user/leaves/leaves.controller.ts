@@ -34,6 +34,10 @@ export class LeavesController {
         const userKey = req?.user?.sub || req?.user?.userId; // JWT user
         return this.leavesService.cancelLeave(leaveId);
     }
-
+  
+    @Get('getAllLeavesRequests')
+    getAllLeavesRequests() {
+        return this.leavesService.getAllLeavesRequests();
+    }
     
 }

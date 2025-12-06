@@ -39,6 +39,7 @@ export class CreateUserDto {
   @IsOptional() dob?: string;
   @IsString() @IsNotEmpty() genderId: string;
   @IsString() @IsNotEmpty() departmentId: string;
+  @IsString() @IsNotEmpty() isActive: boolean;
   @IsString() @IsNotEmpty() role: string;
   @IsString() @IsNotEmpty() roleId: string;
 

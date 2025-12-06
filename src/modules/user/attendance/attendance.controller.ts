@@ -24,8 +24,9 @@ getAllActivities(@Param('key') userKey: string) {
     return this.attendanceService.getAllActivities(userKey);
 }
 
-
-
-    
-} 
-     
+@UseGuards(JwtAuthGuard)
+@Get('getTotalAttendance')
+getTotalAttendance(@Request() req: any) {
+  return this.attendanceService.getTotalAttendance(req.user);
+}
+}

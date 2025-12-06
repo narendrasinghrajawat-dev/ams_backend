@@ -114,6 +114,22 @@ export class LeavesService {
       data: updatedRecord,
     };
   }
-
   
+  async getAllLeavesRequests() {
+  const cursor = await this.db.query(aql`
+    FOR l IN ${this.leavesCollection}
+      SORT l.appliedAt DESC
+      RETURN l
+  `);
+
+  const allLeaves = await cursor.all();
+
+  return {
+    message: "All leave requests fetched successfully",
+    statusCode: 200,
+    count: allLeaves.length,
+    data: allLeaves,
+  };
+}
+
 }

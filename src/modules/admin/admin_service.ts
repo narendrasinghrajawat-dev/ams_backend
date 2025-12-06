@@ -42,7 +42,8 @@ export class AdminService {
         lastName: userData.lastName,
         dob: userData.dob,
         genderId: userData.genderId,
-
+        isActive: userData.isActive,
+        
         // CONTACT
         email: userData.email,
         countryCode: userData.countryCode,
@@ -111,6 +112,7 @@ export class AdminService {
       dob: u.dob,
       genderId: u.genderId,
       departmentId: u.departmentId,
+      isActive: u.isActive,
 
       role: u.role,
       roleId: u.roleId,

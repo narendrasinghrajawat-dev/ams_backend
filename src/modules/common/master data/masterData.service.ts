@@ -17,6 +17,11 @@ private db;
   async getMasterData() {
     const collection = this.db.collection('masterData');
 
-    return await collection.document('master_data');
+    const masterData= await collection.document('master_data');
+    return{
+      message: 'Master data fetched successfully',
+      statusCode: 200,
+      data: masterData,
+    }
   }
 } 

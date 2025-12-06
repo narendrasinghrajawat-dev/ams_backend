@@ -60,4 +60,19 @@ export class AttendanceService {
     };
   }
 
+ async getTotalAttendance(user: any) {
+  const db = this.getDb();
+
+  const cursor = await db.query(aql`
+    FOR att IN attendance
+      FILTER att.userKey == ${user.sub}
+      SORT att.timestamp DESC
+      RETURN att
+  `);
+
+  return cursor.all();
+}
+
+
+
 } 
