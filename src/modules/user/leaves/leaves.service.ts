@@ -24,7 +24,7 @@ export class LeavesService {
     const cursor = await db.query(aql`
       FOR l IN ${this.leavesCollection}
         FILTER l.userKey == ${userKey}
-        SORT l.appliedAt DESC
+        SORT l.appliedAt DESC 
         RETURN l
     `);
 
@@ -69,7 +69,7 @@ export class LeavesService {
   createdDate: new Date().toISOString(),
   modifiedDate: null,
 
-  leaveStatus: "Pending",
+  leaveStatus: dto.leaveStatus,
   actionDate: null,
   approverByName: null,
   approverByKey: null,
@@ -125,21 +125,5 @@ export class LeavesService {
     };
   }
   
-  async getAllLeavesRequests() {
-  const cursor = await this.db.query(aql`
-    FOR l IN ${this.leavesCollection}
-      SORT l.appliedAt DESC
-      RETURN l
-  `);
-
-  const allLeaves = await cursor.all();
-
-  return {
-    message: "All leave requests fetched successfully",
-    statusCode: 200,
-    count: allLeaves.length,
-    data: allLeaves,
-  };
-}
 
 }

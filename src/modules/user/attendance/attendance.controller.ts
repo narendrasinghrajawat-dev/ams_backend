@@ -14,19 +14,11 @@ export class AttendanceController {
     return this.attendanceService.punch(req.user, dto);
   } 
 
-
  
-@Get('getAllAttedanceActivity/:key')
-getAllActivities(@Param('key') userKey: string) {
-    console.log('getAllActivities api is called');
-    console.log(userKey);
-    
-    return this.attendanceService.getAllActivities(userKey);
-}
-
-@UseGuards(JwtAuthGuard)
-@Get('getTotalAttendance')
-getTotalAttendance(@Request() req: any) {
-  return this.attendanceService.getTotalAttendance(req.user);
-}
+  
+  @Get('getAllAttedanceActivity/:key') 
+  getAllActivities(@Param('key') userKey: string) {
+    return this.attendanceService.getAllAttendance(userKey);
+  } 
+ 
 }

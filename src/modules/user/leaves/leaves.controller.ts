@@ -28,16 +28,12 @@ export class LeavesController {
     return this.leavesService.applyLeaves(userKey, dto);
   }
 
-
+ 
     @Delete('cancel/:leaveId')
     cancelLeave(@Param('leaveId') leaveId: string, @Request() req: any) {
         const userKey = req?.user?.sub || req?.user?.userId; // JWT user
         return this.leavesService.cancelLeave(leaveId);
     }
-  
-    @Get('getAllLeavesRequests')
-    getAllLeavesRequests() {
-        return this.leavesService.getAllLeavesRequests();
-    }
+ 
     
 }

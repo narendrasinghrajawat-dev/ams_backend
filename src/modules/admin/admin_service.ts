@@ -2,6 +2,8 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ArangoProvider } from '../../database/arango.provider';
 import * as bcrypt from 'bcrypt';
 import { aql } from 'arangojs';
+import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { AdminLeaveActionDto } from './dto/admin-leave-action.dto';
 
 @Injectable()
 export class AdminService {
@@ -149,7 +151,7 @@ export class AdminService {
   }
 
   // Update user by _key (admin)
-  async updateUser(key: string, dto: any) {
+  async updateUser(key: string, dto: any) { 
     const existing = await this.users.document(key).catch(() => null);
 
     if (!existing) {
@@ -180,6 +182,114 @@ export class AdminService {
       message: 'User updated successfully',
       statusCode: 200,
       data: updatedUser,
-    };
+    }; 
   }
+
+
+
+
+
+async getTotalAttendance() {  
+
+  const cursor = await this.db.query(aql`
+    FOR att IN attendance
+      LET userDoc = DOCUMENT(users, att.userKey)
+      
+      SORT att.timestamp DESC
+      
+      RETURN MERGE(att, {
+        userName: CONCAT_SEPARATOR(" ", userDoc.firstName, userDoc.middleName, userDoc.lastName)
+      })
+  `);
+
+  const totalAttendance = await cursor.all();
+
+  return { 
+    message: 'GetTotalAttendance successfully with usernames',
+    statusCode: 200,
+    count: totalAttendance.length,
+    data: totalAttendance,
+  };
+}
+
+
+  async getAllLeavesRequests() {
+   
+const cursor = await this.db.query(aql`
+  FOR l IN applyLeaves 
+    LET userDoc = DOCUMENT(users, l.userKey)
+    SORT l.createdDate DESC
+    RETURN MERGE(l, {
+      // 1. Check if userDoc exists (e.g., if userKey was valid)
+      // 2. CONCAT_SEPARATOR joins the non-null/non-empty strings with a space
+      userName: (
+        userDoc ? 
+        CONCAT_SEPARATOR(" ", 
+          userDoc.firstName, 
+          userDoc.middleName, 
+          userDoc.lastName
+        ) : 
+        null // Fallback if the user document is missing
+      )
+    }) 
+`);
+  const allLeaves = await cursor.all();
+
+
+  return {
+    message: "All leave requests fetched successfully",
+    statusCode: 200,
+    count: allLeaves.length,
+    data: allLeaves,
+  };
+}
+
+ async adminActionOnLeaveRequest(data: AdminLeaveActionDto) {
+  const { leavesId, leavesStatus, approveByKey } = data;
+  
+  // Set the current date for tracking when the action was taken
+  const actionDate = new Date().toISOString();
+  
+  // NOTE: approverByName is set to null here. 
+  // For a complete solution, you would typically fetch the approver's name 
+  // using 'approveByKey' from the 'users' collection and include it here.
+  const approverByName = null; 
+
+  try {
+    const result = await this.db.query(aql`
+      UPDATE ${leavesId} WITH { 
+        leaveStatus: ${leavesStatus},
+        approverByKey: ${approveByKey},
+        actionDate: ${actionDate},
+        approverByName: ${approverByName},
+        modifiedDate: ${actionDate}
+      } IN applyLeaves
+      RETURN NEW
+    `);
+    
+    // Get the updated document from the cursor
+    const updatedDocument = await result.next();
+    
+    if (!updatedDocument) {
+      // If the document wasn't found (i.e., leavesId was invalid)
+      return {
+        message: `Leave request with key ${leavesId} not found.`,
+        statusCode: 404,
+      };
+    }
+
+    return {
+      message: 'Leave request status updated successfully.',
+      statusCode: 200,
+      data: updatedDocument,
+    };
+  
+  } catch (error) {
+    console.error('Error processing admin action on leave request:', error);
+    // Propagate a generic error for the controller to handle (e.g., return 500)
+    throw new Error('Database error during leave action.');
+  }
+
+ }
+
 }

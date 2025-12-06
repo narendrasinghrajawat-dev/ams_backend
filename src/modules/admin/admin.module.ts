@@ -10,15 +10,15 @@ import { DatabaseModule } from "src/database/database.module";
     imports : [
         DatabaseModule,
         JwtModule.register({
-      secret: process.env.JWT_SECRET || 'mySecretKey',
-      signOptions: { expiresIn: '10d' }, 
-    
-    }),
-    ], 
+      secret: process.env.JWT_SECRET || 'mySecretKey', 
+      signOptions: { expiresIn: '10d' },  
+       
+    }), 
+    ],  
     providers : [AdminService, JwtStrategy],
     controllers : [AdminController],
     exports: [AdminService], // if other modules need admin service
 })
-
-export class AdminModule{}
-
+ 
+export class AdminModule{} 
+ 

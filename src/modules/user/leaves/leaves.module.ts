@@ -14,4 +14,4 @@ import { LeavesController } from "./leaves.controller";
 )
 export class LeavesModule{
 
-} 
+}  

@@ -11,7 +11,7 @@ export class AttendanceService {
   private getDb() {
     return this.arangoProvider.getDb();
   } 
-  
+   
   async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
     const collection = db.collection(COLLECTIONS.ATTENDANCE);      
@@ -39,12 +39,11 @@ export class AttendanceService {
       } 
     };
   } 
+ 
 
+       async getAllAttendance(userKey: string) {
 
-     async getAllActivities(userKey: string) {
-    const db = this.getDb();
-
-    const cursor = await db.query(aql`
+    const cursor = await this.getDb().query(aql`
       FOR att IN attendance
         FILTER att.userKey == ${userKey}
         SORT att.punchDate DESC, att.punchTime DESC
@@ -59,20 +58,8 @@ export class AttendanceService {
       count: activities.length,
       data: activities,
     };
-  }
+  } 
 
- async getTotalAttendance(user: any) {
-  const db = this.getDb();
-
-  const cursor = await db.query(aql`
-    FOR att IN attendance
-      FILTER att.userKey == ${user.sub}
-      SORT att.timestamp DESC
-      RETURN att
-  `);
-
-  return cursor.all();
-}
 
 
 
