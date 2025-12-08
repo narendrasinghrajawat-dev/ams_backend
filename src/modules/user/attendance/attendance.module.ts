@@ -8,7 +8,7 @@ import { PunchDto } from '../attendance/dto/punch.dto';
   imports: [DatabaseModule , PunchDto,],
   controllers: [AttendanceController],
   providers: [AttendanceService],
-  exports: [
+  exports: [ 
     AttendanceService
   ] 
 }) 

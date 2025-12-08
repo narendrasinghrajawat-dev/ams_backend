@@ -2,8 +2,8 @@ import { Body, Controller, Delete, Get, Param, Post, Request } from "@nestjs/com
 import { LeavesService } from "./leaves.service";
 import { ApplyLeavesDto } from ",,/../../AMS-NestJS/src/modules/user/leaves/dto/apply_leaves.dto";
 
-@Controller('leaves')
-export class LeavesController {
+@Controller('user/leaves')
+export class LeavesController { 
   constructor(private readonly leavesService: LeavesService) {}
 
   // GET /leaves/getLeavesStatus/:key

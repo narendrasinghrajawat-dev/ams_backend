@@ -3,12 +3,12 @@ import { AttendanceService } from './attendance.service';
 import { PunchDto } from '../../user/attendance/dto/punch.dto';
 import { JwtAuthGuard } from 'src/modules/auth/jwt.guard';
 
-@Controller('attendance')
+@Controller('user/attendance')
 export class AttendanceController {
   
   constructor(private attendanceService: AttendanceService) {}
   
-  @UseGuards(JwtAuthGuard) 
+  @UseGuards(JwtAuthGuard)  
   @Post('punch')
   punch(@Request() req: any, @Body() dto: PunchDto) {
     return this.attendanceService.punch(req.user, dto);

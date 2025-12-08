@@ -3,6 +3,7 @@ import { aql } from "arangojs";
 import { ApplyLeavesDto } from "../leaves/dto/apply_leaves.dto";
 import { ArangoProvider } from "src/database/arango.provider";
 import {COLLECTIONS} from "../../../utills/constant/const_collections";
+import { COMMON_STRING } from "src/utills/constant/const_strings";
 
 @Injectable()
 export class LeavesService {
@@ -94,36 +95,39 @@ export class LeavesService {
 
 
   async cancelLeave(leaveId: string) {
-    if (!leaveId) throw new BadRequestException("leaveId is required");
+  if (!leaveId) throw new BadRequestException("leaveId is required");
 
-    const db = this.db;
+  const db = this.db;
 
-    // get leave record
-    const leave = await this.leavesCollection.document(leaveId).catch(() => null);
+  // Find leave record
+  const leave = await this.leavesCollection.document(leaveId).catch(() => null);
 
-    if (!leave) {
-      throw new NotFoundException(`Leave with ID ${leaveId} not found`);
-    }
-
-    // only pending leaves can be cancelled
-    if (leave.status !== 'pending') {
-      throw new BadRequestException("Only pending leaves can be cancelled");
-    }
-
-    const updatedRecord = {
-      ...leave,
-      status: "cancelled",
-      cancelledAt: new Date().toISOString(),
-    };
-
-    await this.leavesCollection.update(leaveId, updatedRecord);
-
-    return {
-      message: "Leave cancelled successfully", 
-      statusCode: 200,
-      data: updatedRecord,
-    };
+  if (!leave) {
+    throw new NotFoundException(`Leave with ID ${leaveId} not found`);
   }
+
+  // Only pending leaves can be cancelled
+  if (
+    leave.leaveStatus === COMMON_STRING.APPROVED_STATUS_KEY ||
+    leave.leaveStatus === COMMON_STRING.REJECTED_STATUS_KEY
+  ) {
+    throw new BadRequestException("Only pending leaves can be cancelled");
+  }
+
+  // 🔥 UPDATE ONLY THE REQUIRED FIELDS (do not modify whole JSON)
+  const updatedFields = {
+    isActive: false,                // <- deactivate leave
+    cancelledAt: new Date().toISOString(),
+  }; 
+
+  await this.leavesCollection.update(leaveId, updatedFields);
   
+  return {
+    message: "Leave cancelled successfully",
+    statusCode: 200,
+    data: { ...leave, ...updatedFields },
+  };
+}
+
 
 }
