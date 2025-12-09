@@ -11,10 +11,10 @@ export class LeavesService {
   private leavesCollection: any;
 
   constructor(@Inject('ARANGO_CONNECTION') private readonly arangoProvider: ArangoProvider) {
-    this.db = this.arangoProvider.getDb();
-    this.leavesCollection = this.db.collection(COLLECTIONS.LEAVES);
+    this.db = this.arangoProvider.getDb(); 
+    this.leavesCollection = this.db.collection(COLLECTIONS.APPLY_LEAVES);
   }
-
+ 
   // Get leaves for a user key
   async getLeavesStatusByUserKey(userKey: string) {
     if (!userKey) {

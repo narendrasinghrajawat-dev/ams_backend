@@ -4,19 +4,24 @@ import * as bcrypt from 'bcrypt';
 import { aql } from 'arangojs';
 import { COLLECTIONS } from 'src/utills/constant/const_collections';
 import { AdminLeaveActionDto } from './dto/admin-leave-action.dto';
+import { COMMON_STRING } from 'src/utills/constant/const_strings';
 
 @Injectable()
 export class AdminService {
   private db;
   private users;
+  private attendance;
+  private applyLeaves;
 
   constructor(
     @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
   ) {
     this.db = this.arango.getDb();
-    this.users = this.db.collection('users');
+    this.users = this.db.collection(COLLECTIONS.USERS);
+    this.attendance = this.db.collection(COLLECTIONS.ATTENDANCE);
+    this.applyLeaves = this.db.collection(COLLECTIONS.APPLY_LEAVES);
   } 
-  
+   
   // Create user (admin action)
   async createUser(data: any, managerId: string) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -44,7 +49,7 @@ export class AdminService {
         lastName: userData.lastName,
         dob: userData.dob,
         genderId: userData.genderId,
-        isActive: userData.isActive,
+        isActive: true,
         
         // CONTACT
         email: userData.email,
@@ -78,7 +83,7 @@ export class AdminService {
   // Find by email (admin helper)
   async findByEmail(email: string) {
     const cursor = await this.db.query(aql`
-      FOR u IN users
+      FOR u IN ${this.users}
         FILTER u.email == ${email}
         LIMIT 1
         RETURN u
@@ -88,9 +93,10 @@ export class AdminService {
 
   // Get all users with role "user" (admin list)
   async getAllUsers() {
+
     const cursor = await this.db.query(aql`
-      FOR u IN users
-      FILTER u.role == "user"
+      FOR u IN ${this.users}
+      FILTER u.roleId == ${COMMON_STRING.USER_ID} && u.isActive == true
       SORT u.createdAt DESC
       RETURN u
     `);
@@ -119,10 +125,11 @@ export class AdminService {
       role: u.role,
       roleId: u.roleId,
 
-      address: u.address,
+      address: u.address, 
 
       createdBy: u.createdBy,
       createdAt: u.createdAt,
+      
     }));
 
     return {
@@ -192,7 +199,7 @@ export class AdminService {
 async getTotalAttendance() {  
 
   const cursor = await this.db.query(aql`
-    FOR att IN attendance
+    FOR att IN ${this.attendance}
       LET userDoc = DOCUMENT(users, att.userKey)
       
       SORT att.timestamp DESC
@@ -216,7 +223,7 @@ async getTotalAttendance() {  
   async getAllLeavesRequests() {
    
 const cursor = await this.db.query(aql`
-  FOR l IN applyLeaves 
+  FOR l IN ${this.applyLeaves} 
     LET userDoc = DOCUMENT(users, l.userKey)
     SORT l.createdDate DESC
     RETURN MERGE(l, {
@@ -248,7 +255,7 @@ const cursor = await this.db.query(aql`
   const { leavesId, leavesStatus, approveByKey } = data;
   
   // Set the current date for tracking when the action was taken
-  const actionDate = new Date().toISOString();
+  const actionDate = new Date().toISOString(); 
   
   // NOTE: approverByName is set to null here. 
   // For a complete solution, you would typically fetch the approver's name 
@@ -263,7 +270,7 @@ const cursor = await this.db.query(aql`
         actionDate: ${actionDate},
         approverByName: ${approverByName},
         modifiedDate: ${actionDate}
-      } IN applyLeaves
+      } IN ${this.applyLeaves}
       RETURN NEW
     `);
     

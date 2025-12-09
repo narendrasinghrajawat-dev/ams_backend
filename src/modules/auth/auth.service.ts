@@ -29,7 +29,7 @@ export class AuthService {
         const { email, password, lat, long, deviceInformation } = dto;
 
         const cursor = await this.db.query(aql`
-      FOR u IN users
+      FOR u IN ${this.users}
         FILTER u.email == ${email}
         LIMIT 1
         RETURN u

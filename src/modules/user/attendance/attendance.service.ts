@@ -2,16 +2,21 @@ import { Inject, Injectable } from '@nestjs/common';
 import { aql } from 'arangojs';
 import { PunchDto } from '../../user/attendance/dto/punch.dto';
 import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { Collection } from 'arangojs/collections';
 
 @Injectable()
 export class AttendanceService {
 
-  constructor(@Inject('ARANGO_CONNECTION') private arangoProvider: any ) {}
+     private attendance;
+
+  constructor(@Inject('ARANGO_CONNECTION') private arangoProvider: any ) {
+    this.attendance = this.arangoProvider.getDb().collection(COLLECTIONS.ATTENDANCE);
+  }
 
   private getDb() {
     return this.arangoProvider.getDb();
   } 
-   
+    
   async punch(user: any, dto: PunchDto) {
     const db = this.getDb();
     const collection = db.collection(COLLECTIONS.ATTENDANCE);      
@@ -24,7 +29,8 @@ export class AttendanceService {
       lat: dto.lat,
       long: dto.long,
       deviceInformation: dto.deviceInformation,
-      createdDate: new Date().toISOString()
+      createdDate: new Date().toISOString(),
+      isActive : true,
     };  
   
     const result = await collection.save(punchRecord); 
@@ -44,13 +50,13 @@ export class AttendanceService {
        async getAllAttendance(userKey: string) {
 
     const cursor = await this.getDb().query(aql`
-      FOR att IN attendance
+      FOR att IN ${this.attendance}
         FILTER att.userKey == ${userKey}
         SORT att.punchDate DESC, att.punchTime DESC
         RETURN att
     `);
 
-    const activities = await cursor.all();
+    const activities = await cursor.all();  
 
     return {
       message: 'Get All Activities fetched successfully',

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ValidateNested, IsNotEmpty, IsString } from 'class-validator';
+import { ValidateNested, IsNotEmpty, IsString, IsBoolean } from 'class-validator';
 import { DeviceInfoDto } from '../../../common/common dto/device_info.dto';
 
 export class PunchDto {
@@ -9,8 +9,7 @@ export class PunchDto {
   @IsString() @IsNotEmpty() punchDate: string;
   @IsString() lat: string;
   @IsString() long: string;
-
-  @ValidateNested()
+  @ValidateNested() 
   @Type(() => DeviceInfoDto)
   deviceInformation: DeviceInfoDto;
 } 
