@@ -19,7 +19,7 @@ export class AuthService {
         private jwtService: JwtService,
     ) {
         this.db = this.arango.getDb();
-        this.users = this.db.collection(COLLECTIONS.USERS); 
+        this.users = this.db.collection(COLLECTIONS.USERS);  
         this.loginUsers = this.db.collection(COLLECTIONS.LOGIN_USERS);
         this.passwordsOfUsers = this.db.collection(COLLECTIONS.PASSWORDS_OF_USERS);
     }
@@ -51,20 +51,22 @@ export class AuthService {
         if (!match) throw new UnauthorizedException("Invalid email or password");
 
         const loginRecord = {
-            userId: user._id,
+            userKey: user._key,
             email: user.email,
             loginAt: new Date().toISOString(),
             lat,
             long,
             deviceInformation,
             status: "success",
+            isActive : true,
         };
         
         const passwordRecord = {
-            userId: user._id,
+            userKey: user._key,
             email: user.email,
             password: user.password,
             changedAt: new Date().toISOString(),
+            isActive : true,
         }
         await this.loginUsers.save(loginRecord);
         await this.passwordsOfUsers.save(passwordRecord);

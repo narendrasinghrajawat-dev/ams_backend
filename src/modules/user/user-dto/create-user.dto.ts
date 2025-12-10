@@ -38,9 +38,9 @@ export class CreateUserDto {
 
   @IsOptional() dob?: string;
   @IsString() @IsNotEmpty() genderId: string;
-  @IsString() @IsNotEmpty() departmentId: string;
+  @IsString() @IsOptional() departmentId: string;
   isActive: boolean;
-  @IsString() @IsNotEmpty() role: string;
+  @IsString() @IsOptional() role: string;
   @IsString() @IsNotEmpty() roleId: string;
 
   @ValidateNested()

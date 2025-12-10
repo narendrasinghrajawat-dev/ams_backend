@@ -11,6 +11,14 @@ export class LeavesController {
   async getLeavesStatusByUserKey(@Param("key") userKey: string) {
     return this.leavesService.getLeavesStatusByUserKey(userKey);
   }
+
+
+   @Get('getLeavesBalance/:key')
+  async getLeavesBalance(@Param("key") userKey: string) {
+    return this.leavesService.getLeavesBalanceByUserKey(userKey);
+  } 
+  
+  
   
   // POST /leaves/applyLeaves
   // The API will prefer req.user.sub (JWT) but will accept body.userKey if present.

@@ -12,7 +12,7 @@ export class AdminService {
   private users;
   private attendance;
   private applyLeaves;
-
+ private leaveBalance;
   constructor(
     @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
   ) {
@@ -20,65 +20,108 @@ export class AdminService {
     this.users = this.db.collection(COLLECTIONS.USERS);
     this.attendance = this.db.collection(COLLECTIONS.ATTENDANCE);
     this.applyLeaves = this.db.collection(COLLECTIONS.APPLY_LEAVES);
+    this.leaveBalance = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
+
   } 
    
   // Create user (admin action)
-  async createUser(data: any, managerId: string) {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+ async createUser(data: any, managerId: string) {
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+   
+  const userData = {
+    ...data,
+    password: hashedPassword,
+    createdBy: managerId,
+    createdAt: new Date().toISOString(),
+    isActive: true,
+  }; 
 
-    const userData = {
-      ...data,
-      password: hashedPassword,
-      createdBy: managerId,
-      createdAt: new Date().toISOString(),
-    };
+  const savedUser = await this.users.save(userData);
+  
+  // -------------------------------
+  // 1️⃣ Create default leave balance for users (roleId == "1")
+  // -------------------------------
+  try {
+    const roleId = String(data.roleId);
+    const genderId = String(data.genderId); // "1" = male, "2" = female (as per your note)
 
-    const savedUser = await this.users.save(userData);
+    if (roleId === COMMON_STRING.USER_ID) {
 
-    return {
-      message: 'New user created successfully',
-      statusCode: 201,
-      data: {
-        _key: savedUser._key,
-        _id: savedUser._id,
-        _rev: savedUser._rev,
+      const annualLeaveBalance = genderId === COMMON_STRING.FEMALE_KEY ? 5 : 3; 
 
-        // PERSONAL DATA
-        firstName: userData.firstName,
-        middleName: userData.middleName,
-        lastName: userData.lastName,
-        dob: userData.dob,
-        genderId: userData.genderId,
+      const leaveBalanceDoc = {
+        userKey: savedUser._key, // link to user
+        leavesBalance: [
+          {
+            id: "1",
+            name: "Casual/Sick Leave",
+            balance: 24,
+          },
+          {
+            id: "2",
+            name: "Annual Leave",
+            balance: annualLeaveBalance,
+          },
+        ],
         isActive: true,
-        
-        // CONTACT
-        email: userData.email,
-        countryCode: userData.countryCode,
-        phoneNo: userData.phoneNo,
-        username: userData.username,
+        createdDate: new Date().toISOString(),
+      };
 
-        // ROLE / DEPARTMENT
-        role: userData.role,
-        roleId: userData.roleId,
-        departmentId: userData.departmentId,
-
-        // ADDRESS (Nested)
-        address: {
-          street: userData.address?.street,
-          cityName: userData.address?.cityName,
-          cityId: userData.address?.cityId,
-          stateName: userData.address?.stateName,
-          stateId: userData.address?.stateId,
-          zipCode: userData.address?.zipCode,
-          countryName: userData.address?.countryName,
-          countryId: userData.address?.countryId,
-        },
-
-        createdBy: userData.createdBy,
-        createdAt: userData.createdAt,
-      },
-    };
+      await this.leaveBalance.save(leaveBalanceDoc);
+    }
+  } catch (err) {
+    // Optional: log but don't block user creation
+    console.error("Error while creating leave balance doc:", err);
   }
+
+  // -------------------------------
+  // 2️⃣ Return user response (same as before)
+  // -------------------------------
+  return {
+    message: 'New user created successfully',
+    statusCode: 201,
+    data: {
+      _key: savedUser._key, 
+      _id: savedUser._id,
+      _rev: savedUser._rev,
+
+      // PERSONAL DATA
+      firstName: userData.firstName,
+      middleName: userData.middleName,
+      lastName: userData.lastName,
+      dob: userData.dob,
+      genderId: userData.genderId,
+      isActive: userData.isActive,
+
+      // CONTACT
+      email: userData.email,
+      countryCode: userData.countryCode,
+      phoneNo: userData.phoneNo,
+      username: userData.username,
+
+      // ROLE / DEPARTMENT
+      role: userData.role,
+      roleId: userData.roleId,
+      departmentId: userData.departmentId,
+
+      // ADDRESS (Nested)
+      address: {
+        street: userData.address?.street,
+        cityName: userData.address?.cityName,
+        cityId: userData.address?.cityId,
+        stateName: userData.address?.stateName,
+        stateId: userData.address?.stateId,
+        zipCode: userData.address?.zipCode,
+        countryName: userData.address?.countryName,
+        countryId: userData.address?.countryId,
+      },
+
+      createdBy: userData.createdBy,
+      createdAt: userData.createdAt,
+    },
+  };
+}
+
 
   // Find by email (admin helper)
   async findByEmail(email: string) {
@@ -98,7 +141,7 @@ export class AdminService {
       FOR u IN ${this.users}
       FILTER u.roleId == ${COMMON_STRING.USER_ID} && u.isActive == true
       SORT u.createdAt DESC
-      RETURN u
+      RETURN u 
     `);
 
     const users = await cursor.all();
@@ -142,21 +185,30 @@ export class AdminService {
 
   // Delete user by _key
   async deleteUser(key: string) {
+    const softDeletePayload = {
+      isActive: false, // Set the flag to false
+      deletedAt: new Date(), // Set a timestamp for auditing purposes (Recommended)
+    };
+
     try {
-      await this.users.remove(key);
+      
+      const result = await this.users.update(key, softDeletePayload);
 
       return {
-        message: 'User deleted successfully',
+        message: 'User soft-deleted successfully',
         statusCode: 200,
         data: {
           key,
+          ...softDeletePayload, // Include the changes in the response
         },
       };
     } catch (err) {
-      throw new NotFoundException(`User with key ${key} not found`);
+      // Catch exceptions thrown by the database operation (e.g., if the key format is invalid)
+      // Throwing a NotFoundException if the update failed is good practice.
+      throw new NotFoundException(`User with key ${key} not found or update failed.`);
     }
   }
-
+  
   // Update user by _key (admin)
   async updateUser(key: string, dto: any) { 
     const existing = await this.users.document(key).catch(() => null);
@@ -184,6 +236,8 @@ export class AdminService {
     }
 
     await this.users.update(key, updatedUser);
+    updatedUser.password = dto.password;
+    
 
     return { 
       message: 'User updated successfully',

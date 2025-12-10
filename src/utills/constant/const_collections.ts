@@ -4,6 +4,8 @@ export const COLLECTIONS = {
   APPLY_LEAVES: "applyLeaves",
   MASTER_DATA: "masterData",
   LOGIN_USERS: "loginUsers",
-  PASSWORDS_OF_USERS: "passwordsOfUsers"
+  PASSWORDS_OF_USERS: "passwordsOfUsers",
+
+  LEAVE_BALANCE : "leaveBalance"
 };
- 
+  

@@ -9,10 +9,14 @@ import { COMMON_STRING } from "src/utills/constant/const_strings";
 export class LeavesService {
   private db: any;
   private leavesCollection: any;
+private leavesBalanceCollection: any;
+
 
   constructor(@Inject('ARANGO_CONNECTION') private readonly arangoProvider: ArangoProvider) {
     this.db = this.arangoProvider.getDb(); 
     this.leavesCollection = this.db.collection(COLLECTIONS.APPLY_LEAVES);
+    this.leavesBalanceCollection = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
+
   }
  
   // Get leaves for a user key
@@ -38,6 +42,32 @@ export class LeavesService {
       data: leavesStatusList,
     };
   }
+
+
+
+    async getLeavesBalanceByUserKey(userKey: string) {
+    if (!userKey) {
+      throw new BadRequestException('userKey is required');
+    }
+
+    const db = this.db;
+    const cursor = await db.query(aql`
+      FOR l IN ${this.leavesBalanceCollection}
+        FILTER l.userKey == ${userKey}
+        SORT l.createdDate DESC  
+        RETURN l
+    `);
+
+    const leavesBalanceList = await cursor.all();
+
+    return {
+      message: 'Leaves Balance fetched successfully',
+      statusCode: 200,
+      count: leavesBalanceList.length,
+      data: leavesBalanceList,
+    }; 
+  }
+
 
   // Apply leaves: saves a new leave record with status 'pending'
   async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
