@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ArangoProvider } from '../../database/arango.provider';
 import * as bcrypt from 'bcrypt';
 import { aql } from 'arangojs';
@@ -12,7 +12,7 @@ export class AdminService {
   private users;
   private attendance;
   private applyLeaves;
- private leaveBalance;
+  private leaveBalance;
   constructor(
     @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
   ) {
@@ -21,107 +21,79 @@ export class AdminService {
     this.attendance = this.db.collection(COLLECTIONS.ATTENDANCE);
     this.applyLeaves = this.db.collection(COLLECTIONS.APPLY_LEAVES);
     this.leaveBalance = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
-
   } 
    
   // Create user (admin action)
- async createUser(data: any, managerId: string) {
-  const hashedPassword = await bcrypt.hash(data.password, 10);
-   
-  const userData = {
-    ...data,
-    password: hashedPassword,
-    createdBy: managerId,
-    createdAt: new Date().toISOString(),
-    isActive: true,
-  }; 
+  async createUser(data: any, managerId: string) {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const userData = {
+      ...data,
+      password: hashedPassword,
+      createdBy: managerId,
+      createdAt: new Date().toISOString(),
+      isActive: true,
+    }; 
 
-  const savedUser = await this.users.save(userData);
-  
-  // -------------------------------
-  // 1️⃣ Create default leave balance for users (roleId == "1")
-  // -------------------------------
-  try {
-    const roleId = String(data.roleId);
-    const genderId = String(data.genderId); // "1" = male, "2" = female (as per your note)
+    const savedUser = await this.users.save(userData);
+    
+    try {
+      const roleId = String(data.roleId);
+      const genderId = String(data.genderId);
 
-    if (roleId === COMMON_STRING.USER_ID) {
+      if (roleId === COMMON_STRING.USER_ID) {
+        const annualLeaveBalance = genderId === COMMON_STRING.FEMALE_KEY ? 5 : 3; 
 
-      const annualLeaveBalance = genderId === COMMON_STRING.FEMALE_KEY ? 5 : 3; 
+        const leaveBalanceDoc = {
+          userKey: savedUser._key,
+          leavesBalance: [
+            { id: "1", name: "Casual/Sick Leave", balance: 24 },
+            { id: "2", name: "Annual Leave", balance: annualLeaveBalance }
+          ],
+          isActive: true,
+          createdDate: new Date().toISOString(),
+        };
 
-      const leaveBalanceDoc = {
-        userKey: savedUser._key, // link to user
-        leavesBalance: [
-          {
-            id: "1",
-            name: "Casual/Sick Leave",
-            balance: 24,
-          },
-          {
-            id: "2",
-            name: "Annual Leave",
-            balance: annualLeaveBalance,
-          },
-        ],
-        isActive: true,
-        createdDate: new Date().toISOString(),
-      };
-
-      await this.leaveBalance.save(leaveBalanceDoc);
+        await this.leaveBalance.save(leaveBalanceDoc);
+      }
+    } catch (err) {
+      console.error("Error while creating leave balance doc:", err);
     }
-  } catch (err) {
-    // Optional: log but don't block user creation
-    console.error("Error while creating leave balance doc:", err);
-  }
 
-  // -------------------------------
-  // 2️⃣ Return user response (same as before)
-  // -------------------------------
-  return {
-    message: 'New user created successfully',
-    statusCode: 201,
-    data: {
-      _key: savedUser._key, 
-      _id: savedUser._id,
-      _rev: savedUser._rev,
-
-      // PERSONAL DATA
-      firstName: userData.firstName,
-      middleName: userData.middleName,
-      lastName: userData.lastName,
-      dob: userData.dob,
-      genderId: userData.genderId,
-      isActive: userData.isActive,
-
-      // CONTACT
-      email: userData.email,
-      countryCode: userData.countryCode,
-      phoneNo: userData.phoneNo,
-      username: userData.username,
-
-      // ROLE / DEPARTMENT
-      role: userData.role,
-      roleId: userData.roleId,
-      departmentId: userData.departmentId,
-
-      // ADDRESS (Nested)
-      address: {
-        street: userData.address?.street,
-        cityName: userData.address?.cityName,
-        cityId: userData.address?.cityId,
-        stateName: userData.address?.stateName,
-        stateId: userData.address?.stateId,
-        zipCode: userData.address?.zipCode,
-        countryName: userData.address?.countryName,
-        countryId: userData.address?.countryId,
+    return {
+      message: 'New user created successfully',
+      statusCode: 201,
+      data: {
+        _key: savedUser._key,
+        _id: savedUser._id,
+        _rev: savedUser._rev,
+        firstName: userData.firstName,
+        middleName: userData.middleName,
+        lastName: userData.lastName,
+        dob: userData.dob,
+        genderId: userData.genderId,
+        isActive: userData.isActive,
+        email: userData.email,
+        countryCode: userData.countryCode,
+        phoneNo: userData.phoneNo,
+        username: userData.username,
+        role: userData.role,
+        roleId: userData.roleId,
+        departmentId: userData.departmentId,
+        address: {
+          street: userData.address?.street,
+          cityName: userData.address?.cityName,
+          cityId: userData.address?.cityId,
+          stateName: userData.address?.stateName,
+          stateId: userData.address?.stateId,
+          zipCode: userData.address?.zipCode,
+          countryName: userData.address?.countryName,
+          countryId: userData.address?.countryId,
+        },
+        createdBy: userData.createdBy,
+        createdAt: userData.createdAt,
       },
-
-      createdBy: userData.createdBy,
-      createdAt: userData.createdAt,
-    },
-  };
-}
-
+    };
+  }
 
   // Find by email (admin helper)
   async findByEmail(email: string) {
@@ -136,7 +108,6 @@ export class AdminService {
 
   // Get all users with role "user" (admin list)
   async getAllUsers() {
-
     const cursor = await this.db.query(aql`
       FOR u IN ${this.users}
       FILTER u.roleId == ${COMMON_STRING.USER_ID} && u.isActive == true
@@ -150,29 +121,22 @@ export class AdminService {
       _key: u._key,
       id: u._id,
       _rev: u._rev,
-
       firstName: u.firstName,
       middleName: u.middleName,
       lastName: u.lastName,
-
       email: u.email,
       countryCode: u.countryCode,
       phoneNo: u.phoneNo,
       username: u.username,
-
       dob: u.dob,
       genderId: u.genderId,
       departmentId: u.departmentId,
       isActive: u.isActive,
-
       role: u.role,
       roleId: u.roleId,
-
       address: u.address, 
-
       createdBy: u.createdBy,
       createdAt: u.createdAt,
-      
     }));
 
     return {
@@ -186,25 +150,21 @@ export class AdminService {
   // Delete user by _key
   async deleteUser(key: string) {
     const softDeletePayload = {
-      isActive: false, // Set the flag to false
-      deletedAt: new Date(), // Set a timestamp for auditing purposes (Recommended)
+      isActive: false,
+      deletedAt: new Date(),
     };
 
     try {
-      
       const result = await this.users.update(key, softDeletePayload);
-
       return {
         message: 'User soft-deleted successfully',
         statusCode: 200,
         data: {
           key,
-          ...softDeletePayload, // Include the changes in the response
+          ...softDeletePayload,
         },
       };
     } catch (err) {
-      // Catch exceptions thrown by the database operation (e.g., if the key format is invalid)
-      // Throwing a NotFoundException if the update failed is good practice.
       throw new NotFoundException(`User with key ${key} not found or update failed.`);
     }
   }
@@ -212,7 +172,6 @@ export class AdminService {
   // Update user by _key (admin)
   async updateUser(key: string, dto: any) { 
     const existing = await this.users.document(key).catch(() => null);
-
     if (!existing) {
       throw new NotFoundException(`User with key ${key} not found`);
     }
@@ -220,14 +179,10 @@ export class AdminService {
     const updatedUser = {
       ...existing,
       ...dto,
-      address: {
-        ...existing.address,
-        ...(dto.address || {}),
-      },
+      address: { ...existing.address, ...(dto.address || {}) },
       updatedAt: new Date().toISOString(),
     };
 
-    // Prevent accidental password overwrite unless admin explicitly sends password (hash if present)
     if (dto.password) {
       const hashed = await bcrypt.hash(dto.password, 10);
       updatedUser.password = hashed;
@@ -237,7 +192,6 @@ export class AdminService {
 
     await this.users.update(key, updatedUser);
     updatedUser.password = dto.password;
-    
 
     return { 
       message: 'User updated successfully',
@@ -246,111 +200,144 @@ export class AdminService {
     }; 
   }
 
+  async getTotalAttendance() {  
+    const cursor = await this.db.query(aql`
+      FOR att IN ${this.attendance}
+        LET userDoc = DOCUMENT(users, att.userKey)
+        SORT att.timestamp DESC
+        RETURN MERGE(att, {
+          userName: CONCAT_SEPARATOR(" ", userDoc.firstName, userDoc.middleName, userDoc.lastName)
+        })
+    `);
 
+    const totalAttendance = await cursor.all();
 
-
-
-async getTotalAttendance() {  
-
-  const cursor = await this.db.query(aql`
-    FOR att IN ${this.attendance}
-      LET userDoc = DOCUMENT(users, att.userKey)
-      
-      SORT att.timestamp DESC
-      
-      RETURN MERGE(att, {
-        userName: CONCAT_SEPARATOR(" ", userDoc.firstName, userDoc.middleName, userDoc.lastName)
-      })
-  `);
-
-  const totalAttendance = await cursor.all();
-
-  return { 
-    message: 'GetTotalAttendance successfully with usernames',
-    statusCode: 200,
-    count: totalAttendance.length,
-    data: totalAttendance,
-  };
-}
-
+    return { 
+      message: 'GetTotalAttendance successfully with usernames',
+      statusCode: 200,
+      count: totalAttendance.length,
+      data: totalAttendance,
+    };
+  }
 
   async getAllLeavesRequests() {
-   
-const cursor = await this.db.query(aql`
-  FOR l IN ${this.applyLeaves} 
-    LET userDoc = DOCUMENT(users, l.userKey)
-    SORT l.createdDate DESC
-    RETURN MERGE(l, {
-      // 1. Check if userDoc exists (e.g., if userKey was valid)
-      // 2. CONCAT_SEPARATOR joins the non-null/non-empty strings with a space
-      userName: (
-        userDoc ? 
-        CONCAT_SEPARATOR(" ", 
-          userDoc.firstName, 
-          userDoc.middleName, 
-          userDoc.lastName
-        ) : 
-        null // Fallback if the user document is missing
-      )
-    }) 
-`);
-  const allLeaves = await cursor.all();
-
-
-  return {
-    message: "All leave requests fetched successfully",
-    statusCode: 200,
-    count: allLeaves.length,
-    data: allLeaves,
-  };
-}
-
- async adminActionOnLeaveRequest(data: AdminLeaveActionDto) {
-  const { leavesId, leavesStatus, approveByKey } = data;
-  
-  // Set the current date for tracking when the action was taken
-  const actionDate = new Date().toISOString(); 
-  
-  // NOTE: approverByName is set to null here. 
-  // For a complete solution, you would typically fetch the approver's name 
-  // using 'approveByKey' from the 'users' collection and include it here.
-  const approverByName = null; 
-
-  try {
-    const result = await this.db.query(aql`
-      UPDATE ${leavesId} WITH { 
-        leaveStatus: ${leavesStatus},
-        approverByKey: ${approveByKey},
-        actionDate: ${actionDate},
-        approverByName: ${approverByName},
-        modifiedDate: ${actionDate}
-      } IN ${this.applyLeaves}
-      RETURN NEW
+    const cursor = await this.db.query(aql`
+      FOR l IN ${this.applyLeaves} 
+        FILTER l.leaveStatus != ${COMMON_STRING.CANCELLED_STATUS_KEY}
+        LET userDoc = DOCUMENT(users, l.userKey)
+        SORT l.createdDate DESC
+        RETURN MERGE(l, {
+          userName: (
+            userDoc ? 
+            CONCAT_SEPARATOR(" ", userDoc.firstName, userDoc.middleName, userDoc.lastName) : 
+            null
+          )
+        }) 
     `);
-    
-    // Get the updated document from the cursor
-    const updatedDocument = await result.next();
-    
-    if (!updatedDocument) {
-      // If the document wasn't found (i.e., leavesId was invalid)
+    const allLeaves = await cursor.all();
+
+    return {
+      message: "All leave requests fetched successfully",
+      statusCode: 200,
+      count: allLeaves.length,
+      data: allLeaves,
+    };
+  }
+
+  // -----------------------------
+  // Simple admin action handler
+  // -----------------------------
+  async adminActionOnLeaveRequest(data: AdminLeaveActionDto) {
+    const { leavesId, leavesStatus, approveByKey } = data;
+
+    if (!leavesId) {
+      throw new BadRequestException('leavesId is required');
+    }
+
+    const actionDate = new Date().toISOString();
+    const approverByName = null; // optionally fetch user name from users collection
+
+    // 1) Load leave doc
+    const leave = await this.applyLeaves.document(leavesId).catch(() => null);
+    if (!leave) {
+      return { message: `Leave request with key ${leavesId} not found.`, statusCode: 404 };
+    }
+
+    // 2) If APPROVE -> deduct balance then update leave
+    if (leavesStatus === COMMON_STRING.APPROVED_STATUS_KEY) {
+      // fetch latest leaveBalance doc for the user
+      const lbCursor = await this.db.query(aql`
+        FOR lb IN ${this.leaveBalance}
+          FILTER lb.userKey == ${leave.userKey}
+          SORT lb.createdDate DESC
+          LIMIT 1
+          RETURN lb
+      `);
+      const leaveBalanceDoc = await lbCursor.next();
+      if (!leaveBalanceDoc) {
+        throw new BadRequestException('Leave balance not found for user');
+      }
+
+      // find balance entry
+      const balanceIndex = (leaveBalanceDoc.leavesBalance || []).findIndex(
+        (e: any) => String(e.id) === String(leave.leaveType) || e.name === leave.leaveType
+      );
+      if (balanceIndex === -1) {
+        throw new BadRequestException(`User does not have a balance entry for leave type ${leave.leaveType}`);
+      }
+
+      const available = Number(leaveBalanceDoc.leavesBalance[balanceIndex].balance || 0);
+      const requested = Number(leave.numberOfLeaves || 0);
+
+      if (available < requested) {
+        throw new BadRequestException(
+          `Insufficient ${leaveBalanceDoc.leavesBalance[balanceIndex].name} balance to approve. Available: ${available}, required: ${requested}`
+        );
+      }
+
+      // deduct and update leaveBalance
+      const updatedLeavesBalance = leaveBalanceDoc.leavesBalance.map((e: any, idx: number) => {
+        if (idx === balanceIndex) {
+          return { ...e, balance: Number(e.balance) - requested };
+        }
+        return e;
+      }); 
+
+      await this.leaveBalance.update(leaveBalanceDoc._key, { leavesBalance: updatedLeavesBalance });
+
+      // update leave as approved
+      const approvedPayload = {
+        leaveStatus: leavesStatus,
+        approverByKey: approveByKey,
+        approverByName,
+        actionDate,
+        modifiedDate: actionDate,
+      };
+      await this.applyLeaves.update(leavesId, approvedPayload);
+
+      const updatedLeave = await this.applyLeaves.document(leavesId);
       return {
-        message: `Leave request with key ${leavesId} not found.`,
-        statusCode: 404,
+        message: 'Leave approved and balance deducted successfully.',
+        statusCode: 200,
+        data: updatedLeave,
       };
     }
 
+    // 3) Non-approve actions (reject/cancel/etc.) -> only update leave doc
+    const updatedFields = {
+      leaveStatus: leavesStatus,
+      approverByKey: approveByKey,
+      approverByName,
+      actionDate,
+      modifiedDate: actionDate,
+    };
+    await this.applyLeaves.update(leavesId, updatedFields);
+    const updatedLeave = await this.applyLeaves.document(leavesId);
     return {
       message: 'Leave request status updated successfully.',
       statusCode: 200,
-      data: updatedDocument,
+      data: updatedLeave,
     };
-  
-  } catch (error) {
-    console.error('Error processing admin action on leave request:', error);
-    // Propagate a generic error for the controller to handle (e.g., return 500)
-    throw new Error('Database error during leave action.');
   }
-
- }
 
 }

@@ -25,62 +25,74 @@ export class AuthService {
     }
 
 
-    async login(dto: LoginDto) {
-        const { email, password, lat, long, deviceInformation } = dto;
+ async login(dto: LoginDto) {
+  const { email, password, lat, long, deviceInformation } = dto;
 
-        const cursor = await this.db.query(aql`
-      FOR u IN ${this.users}
-        FILTER u.email == ${email}
-        LIMIT 1
-        RETURN u
-    `);
+  if (!email || !password) {
+    throw new UnauthorizedException('Email and password are required');
+  }
 
+  // Case-insensitive email lookup
+  const cursor = await this.db.query(aql`
+    FOR u IN ${this.users}
+      FILTER LOWER(u.email) == LOWER(${email})
+      LIMIT 1
+      RETURN u
+  `);
 
-        const user = await cursor.next();
-        if (!user) throw new UnauthorizedException("Invalid email or password");
-        const payload = {
-            sub: user._key,
-            role: user.role,
-            email: user.email,
-        };
-        
-        const match = user.password.startsWith("$2b$")
-            ? await bcrypt.compare(password, user.password)
-            : user.password === password;
-        
-        if (!match) throw new UnauthorizedException("Invalid email or password");
+  const user = await cursor.next();
+  if (!user) throw new UnauthorizedException('Invalid email or password');
 
-        const loginRecord = {
-            userKey: user._key,
-            email: user.email,
-            loginAt: new Date().toISOString(),
-            lat,
-            long,
-            deviceInformation,
-            status: "success",
-            isActive : true,
-        };
-        
-        const passwordRecord = {
-            userKey: user._key,
-            email: user.email,
-            password: user.password,
-            changedAt: new Date().toISOString(),
-            isActive : true,
-        }
-        await this.loginUsers.save(loginRecord);
-        await this.passwordsOfUsers.save(passwordRecord);
-           
-        const fullUser = { ...user, lat : lat, long: long, deviceInformation : deviceInformation, token: this.jwtService.sign(payload),};
-        delete fullUser.password;
-       const data = {...fullUser , token: this.jwtService.sign(payload) , loginAt: loginRecord.loginAt};
-       
-        return {
-            message: "Login successful",
-            statusCode: 200,
-            data: data,
-            
-        }
-    };
+  // Ensure stored password exists
+  const storedPwd = user.password;
+  if (!storedPwd) throw new UnauthorizedException('Invalid email or password');
+
+  // Detect bcrypt-style hash: $2a$, $2b$, $2y$
+  const isBcryptHash = typeof storedPwd === 'string' && /^\$2[aby]\$/.test(storedPwd);
+
+  const passwordMatches = isBcryptHash
+    ? await bcrypt.compare(password, storedPwd)
+    : storedPwd === password;
+
+  if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
+
+  // Prepare payload and token once
+  const payload = { sub: user._key, role: user.role, email: user.email };
+  const token = this.jwtService.sign(payload);
+
+  // Save login audit and password history (keep as you had)
+  const loginRecord = {
+    userKey: user._key,
+    email: user.email,
+    loginAt: new Date().toISOString(),
+    lat,
+    long,
+    deviceInformation,
+    status: 'success',
+    isActive: true,
+  };
+
+  const passwordRecord = {
+    userKey: user._key,
+    email: user.email,
+    password: storedPwd,
+    changedAt: new Date().toISOString(),
+    isActive: true,
+  };
+
+  await this.loginUsers.save(loginRecord);
+  await this.passwordsOfUsers.save(passwordRecord);
+
+  // Build response user object (without password)
+  const fullUser = { ...user, lat, long, deviceInformation, token };
+  if (fullUser.password) delete fullUser.password;
+
+  return {
+    message: 'Login successful',
+    statusCode: 200,
+    data: { ...fullUser, loginAt: loginRecord.loginAt },
+  };
+}
+
 
 }

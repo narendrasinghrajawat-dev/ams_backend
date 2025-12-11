@@ -7,12 +7,12 @@ export const COMMON_STRING = {
       PENDING_STATUS_KEY : "1",
       APPROVED_STATUS_KEY : "2",
       REJECTED_STATUS_KEY : "3",
-
+      CANCELLED_STATUS_KEY : "4",
 
       PUNCH_IN_KEY : "1",
       PUNCH_OUT_KEY : "2",
 
-      MALE_KEY : "1",
+      MALE_KEY : "1", 
       FEMALE_KEY : "2",
 
 };  
