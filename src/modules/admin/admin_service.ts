@@ -46,8 +46,8 @@ export class AdminService {
         const leaveBalanceDoc = {
           userKey: savedUser._key,
           leavesBalance: [
-            { id: "1", name: "Casual/Sick Leave", balance: 24 },
-            { id: "2", name: "Annual Leave", balance: annualLeaveBalance }
+            { id: "1", name: "Casual/Sick Leave", balance: 24 , total : 24},
+            { id: "2", name: "Annual Leave", balance: annualLeaveBalance , total : annualLeaveBalance}
           ],
           isActive: true,
           createdDate: new Date().toISOString(),
