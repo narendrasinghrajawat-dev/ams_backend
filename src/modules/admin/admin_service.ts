@@ -340,4 +340,152 @@ export class AdminService {
     };
   }
 
+
+  
+
+async fetchAttendanceByDate(date: string) {
+  const { startOfDay, endOfDay } = this.normalizeDate(date);
+
+  const cursor = await this.db.query(aql`
+    FOR att IN ${this.attendance}
+      FILTER att.punchTime >= ${startOfDay}
+      FILTER att.punchTime <= ${endOfDay}
+
+      LET userDoc = DOCUMENT(users, att.userKey)
+
+      SORT att.punchTime DESC
+
+      RETURN MERGE(att, {
+        userName: CONCAT_SEPARATOR(
+          " ",
+          userDoc.firstName,
+          userDoc.middleName,
+          userDoc.lastName
+        )
+      })
+  `);
+
+  const data = await cursor.all();
+
+  return {
+    message: 'Attendance fetched successfully by date',
+    statusCode: 200,
+    count: data.length,
+    data,
+  };
 }
+ 
+
+async fetchLeavesByDate(date: string) {
+  const { startOfDay, endOfDay } = this.normalizeDate(date);
+
+  const cursor = await this.db.query(aql`
+    FOR leave IN ${this.applyLeaves}
+      FILTER leave.startDate <= ${endOfDay}
+      FILTER leave.endDate >= ${startOfDay}
+
+      LET userDoc = DOCUMENT(users, leave.userKey)
+
+      SORT leave.createdDate DESC
+
+      RETURN MERGE(leave, {
+        userName: CONCAT_SEPARATOR(
+          " ",
+          userDoc.firstName,
+          userDoc.middleName,
+          userDoc.lastName
+        )
+      })
+  `);
+
+  const data = await cursor.all();
+
+  return {
+    message: 'Leaves fetched successfully by date',
+    statusCode: 200,
+    count: data.length,
+    data,
+  };
+}
+
+
+
+
+private normalizeDate(date: string): { startOfDay: string; endOfDay: string } {
+  const parsedDate = new Date(date);
+
+  const year = parsedDate.getUTCFullYear();
+  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getUTCDate()).padStart(2, '0');
+
+  const dateOnly = `${year}-${month}-${day}`;
+
+  return {
+    startOfDay: `${dateOnly}T00:00:00.000Z`,
+    endOfDay: `${dateOnly}T23:59:59.999Z`,
+  };
+}
+
+
+
+async fetchActivitiesByDate(date: string) {
+  /**
+   * date can be:
+   *  - 2025-12-13
+   *  - 2025-12-13T13:21:42.370126
+   * We normalize it safely.
+   */
+
+  const parsed = new Date(date);
+
+  const year = parsed.getUTCFullYear();
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getUTCDate()).padStart(2, '0');
+
+  const dateOnly = `${year}-${month}-${day}`;
+
+  const startOfDay = `${dateOnly}T00:00:00.000Z`;
+  const endOfDay = `${dateOnly}T23:59:59.999Z`;
+
+  const cursor = await this.db.query(aql`
+    FOR att IN ${this.attendance}
+
+      FILTER att.punchTime >= ${startOfDay}
+      FILTER att.punchTime <= ${endOfDay}
+
+      LET userDoc = DOCUMENT(users, att.userKey)
+
+      SORT att.punchTime DESC
+
+      RETURN {
+        _key: att._key,
+        userKey: att.userKey,
+        userName: CONCAT_SEPARATOR(
+          " ",
+          userDoc.firstName,
+          userDoc.middleName,
+          userDoc.lastName
+        ),
+        activityType: att.punchType,
+        activity: att.punchType == "1"
+          ? "Checked In"
+          : "Checked Out",
+        punchTime: att.punchTime,
+        createdDate: att.createdDate
+      }
+  `);
+
+  const data = await cursor.all();
+
+  return {
+    message: 'Admin activities fetched successfully',
+    statusCode: 200,
+    count: data.length,
+    data,
+  };
+}
+
+
+}
+
+

@@ -71,4 +71,36 @@ export class AdminController {
         return this.adminService.adminActionOnLeaveRequest(data);
     } 
     
+
+     @UseGuards(JwtAuthGuard, RolesGuard) 
+    @Roles(Role.Admin)  
+     @Get('fetchLeavesByDate/:date')
+    fetchLeavesByDate(@Param('date') date: string,) {
+        return this.adminService.fetchLeavesByDate(date);
+    } 
+    
+
+
+      @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
+     @Get('fetchAttendanceByDate/:date')
+    fetchAttendanceByDate(@Param('date') date: string,) {
+        return this.adminService.fetchAttendanceByDate(date);
+    } 
+
+
+    
+      @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
+
+    @Get('fetchActivitiesByDate/:date')
+fetchActivities(@Param('date') date: string) {
+  return this.adminService.fetchActivitiesByDate(date);
+}
+
+
+
+
+
+
 }  
