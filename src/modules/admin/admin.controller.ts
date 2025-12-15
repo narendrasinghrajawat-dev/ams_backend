@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/jwt.guard";
 import { Roles } from "src/modules/auth/roles.decorator";
 import { Role } from "src/modules/auth/roles.enum";
@@ -7,6 +7,7 @@ import { AdminService } from "./admin_service";
 import { CreateUserDto } from "src/modules/user/user-dto/create-user.dto";
 import { UpdateUserDto } from "src/modules/user/user-dto/update-user-dto";
 import { LoginDto } from "../user/attendance/dto/login.dto";
+import { ChangePasswordDto } from "../user/user-dto/change-password.dto";
 
 
 @Controller('admin')
@@ -99,7 +100,20 @@ fetchActivities(@Param('date') date: string) {
 }
 
 
+@Post('changeUserPasswordByAdmin') 
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Request() req: any,
+  ) {
+    // prefer authenticated user id, fallback to body.userKey (if present) 
+    const userKey = dto.userKey || req?.user?.sub || req?.user?.userId;
+    if (!userKey) {
+      throw new BadRequestException('User key not provided. Please login or include userKey in request body.');
+    }
 
+    // delegate to service
+    return this.adminService.changePassword(userKey, dto.newPassword);
+  }
 
 
 

@@ -31,6 +31,7 @@ export class AdminService {
       password: hashedPassword,
       createdBy: managerId,
       createdAt: new Date().toISOString(),
+      joinedDate: new Date().toISOString(),
       isActive: true,
     }; 
 
@@ -91,6 +92,7 @@ export class AdminService {
         },
         createdBy: userData.createdBy,
         createdAt: userData.createdAt,
+        joinedDate : userData.joinedDate
       },
     };
   }
@@ -117,33 +119,34 @@ export class AdminService {
 
     const users = await cursor.all();
 
-    const formatted = users.map((u) => ({
-      _key: u._key,
-      id: u._id,
-      _rev: u._rev,
-      firstName: u.firstName,
-      middleName: u.middleName,
-      lastName: u.lastName,
-      email: u.email,
-      countryCode: u.countryCode,
-      phoneNo: u.phoneNo,
-      username: u.username,
-      dob: u.dob,
-      genderId: u.genderId,
-      departmentId: u.departmentId,
-      isActive: u.isActive,
-      role: u.role,
-      roleId: u.roleId,
-      address: u.address, 
-      createdBy: u.createdBy,
-      createdAt: u.createdAt,
-    }));
+    // const formatted = users.map((u) => ({
+    //   _key: u._key,
+    //   id: u._id,
+    //   _rev: u._rev,
+    //   firstName: u.firstName,
+    //   middleName: u.middleName,
+    //   lastName: u.lastName,
+    //   email: u.email,
+    //   countryCode: u.countryCode,
+    //   phoneNo: u.phoneNo,
+    //   username: u.username,
+    //   dob: u.dob,
+    //   genderId: u.genderId,
+    //   departmentId: u.departmentId,
+    //   isActive: u.isActive,
+    //   role: u.role,
+    //   roleId: u.roleId,
+    //   address: u.address, 
+    //   createdBy: u.createdBy,
+    //   createdAt: u.createdAt,
+    //   joinedDate
+    // }));
 
     return {
       message: 'User list fetched successfully',
       statusCode: 200,
-      count: formatted.length,
-      data: formatted,
+      count: users.length,
+      data: users,
     };
   }
 
@@ -287,7 +290,7 @@ export class AdminService {
       }
 
       const available = Number(leaveBalanceDoc.leavesBalance[balanceIndex].balance || 0);
-      const requested = Number(leave.numberOfLeaves || 0);
+      const requested = Number(leave.numberOfLeaves || 0); 
 
       if (available < requested) {
         throw new BadRequestException(
@@ -429,13 +432,6 @@ private normalizeDate(date: string): { startOfDay: string; endOfDay: string } {
 
 
 async fetchActivitiesByDate(date: string) {
-  /**
-   * date can be:
-   *  - 2025-12-13
-   *  - 2025-12-13T13:21:42.370126
-   * We normalize it safely.
-   */
-
   const parsed = new Date(date);
 
   const year = parsed.getUTCFullYear();
@@ -449,7 +445,6 @@ async fetchActivitiesByDate(date: string) {
 
   const cursor = await this.db.query(aql`
     FOR att IN ${this.attendance}
-
       FILTER att.punchTime >= ${startOfDay}
       FILTER att.punchTime <= ${endOfDay}
 
@@ -457,22 +452,14 @@ async fetchActivitiesByDate(date: string) {
 
       SORT att.punchTime DESC
 
-      RETURN {
-        _key: att._key,
-        userKey: att.userKey,
+      RETURN MERGE(att, {
         userName: CONCAT_SEPARATOR(
           " ",
           userDoc.firstName,
           userDoc.middleName,
           userDoc.lastName
-        ),
-        activityType: att.punchType,
-        activity: att.punchType == "1"
-          ? "Checked In"
-          : "Checked Out",
-        punchTime: att.punchTime,
-        createdDate: att.createdDate
-      }
+        )
+      })
   `);
 
   const data = await cursor.all();
@@ -484,6 +471,36 @@ async fetchActivitiesByDate(date: string) {
     data,
   };
 }
+
+
+  async changePassword(userKey: string, newPassword: string) {
+    if (!userKey) {
+      throw new BadRequestException('userKey is required');
+    }
+    if (!newPassword || String(newPassword).length < 6) {
+      throw new BadRequestException('newPassword must be at least 6 characters');
+    }
+    
+    // Check user exists
+    const userDoc = await this.users.document(userKey).catch(() => null);
+    if (!userDoc) {
+      throw new NotFoundException(`User with key ${userKey} not found`);
+    }
+
+    // Hash the new password
+    const hashed = await bcrypt.hash(String(newPassword), 10);
+
+    // Update only the password field (partial update)
+    await this.users.update(userKey, { password: hashed, modifiedDate: new Date().toISOString() });
+    
+    return {
+      message: 'Password changed successfully',
+      statusCode: 200,
+      data: {
+        userKey,
+      },
+    };
+  }
 
 
 }

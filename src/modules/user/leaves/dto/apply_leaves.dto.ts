@@ -49,6 +49,9 @@ export class ApplyLeavesDto {
   @IsNotEmpty()
   leaveDurationsType: string; 
 
+    @IsString()
+  halfDayShiftType: string; 
+
   @IsBoolean()
   @IsNotEmpty()
   isActive: boolean;

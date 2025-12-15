@@ -6,7 +6,7 @@ import { ChangePasswordDto } from './user-dto/change-password.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post('changePassword')
+  @Post('changePasswordByUser')
   async changePassword(
     @Body() dto: ChangePasswordDto,
     @Request() req: any,

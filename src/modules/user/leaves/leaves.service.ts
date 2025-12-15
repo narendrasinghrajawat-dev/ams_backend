@@ -92,108 +92,132 @@ export class LeavesService {
   }
 
   // Apply leaves: saves a new leave record with status 'pending'
-  async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
-    // Basic required param
-    if (!userKey) {
-      throw new BadRequestException('userKey is required');
-    }
+async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
+  // 1️⃣ Basic required param
+  if (!userKey) {
+    throw new BadRequestException('userKey is required');
+  }
 
-    // Common validation (dates, numberOfLeaves) moved to helper
-    LeavesValidator.validateDates(dto.startDate, dto.endDate);
-    LeavesValidator.validateNumberOfLeaves(dto.numberOfLeaves);
+  // 2️⃣ Common validation
+  LeavesValidator.validateDates(dto.startDate, dto.endDate);
+  LeavesValidator.validateNumberOfLeaves(dto.numberOfLeaves); 
 
-    // Normalize requested values
-    const requested = Number(dto.numberOfLeaves);
-    const requestedLeaveType = dto.leaveType; // can be id or name depending on client
+  const requested = Number(dto.numberOfLeaves);
+  const requestedLeaveType = dto.leaveType;
 
-    // --- Fetch latest leave balance doc for the user ---
-    const lbCursor = await this.db.query(aql`
-      FOR lb IN ${this.leavesBalanceCollection}
-        FILTER lb.userKey == ${userKey}
-        SORT lb.createdDate DESC
-        LIMIT 1
-        RETURN lb
-    `);
-    const leaveBalanceDoc = await lbCursor.next();
-    if (!leaveBalanceDoc) {
-      throw new BadRequestException('Leave balance not found for user');
-    }
+  // 3️⃣ Fetch latest leave balance
+  const lbCursor = await this.db.query(aql`
+    FOR lb IN ${this.leavesBalanceCollection}
+      FILTER lb.userKey == ${userKey}
+      SORT lb.createdDate DESC
+      LIMIT 1
+      RETURN lb
+  `);
 
-    // Find relevant balance entry: match by id or name
-    const balanceEntry = (leaveBalanceDoc.leavesBalance || []).find((e: any) => String(e.id) === String(requestedLeaveType) || e.name === requestedLeaveType);
-    if (!balanceEntry) {
-      throw new BadRequestException(`User does not have a balance entry for leave type ${requestedLeaveType}`);
-    }
+  const leaveBalanceDoc = await lbCursor.next();
+  if (!leaveBalanceDoc) {
+    throw new BadRequestException('Leave balance not found for user');
+  }
 
-    // --- Monthly cap check ---
-    // Use helper to get cap for leave type name
-    const cap = LeavesValidator.getMonthlyCapForLeaveName(balanceEntry.name);
+  const balanceEntry = (leaveBalanceDoc.leavesBalance || []).find(
+    (e: any) =>
+      String(e.id) === String(requestedLeaveType) ||
+      e.name === requestedLeaveType
+  );
 
-    // Determine month start/end based on startDate (NOTE: we consider startDate's month)
-    const start = new Date(dto.startDate);
-    const monthStartISO = new Date(start.getFullYear(), start.getMonth(), 1).toISOString();
-    const monthEndISO = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+  if (!balanceEntry) {
+    throw new BadRequestException(
+      `User does not have a balance entry for leave type ${requestedLeaveType}`,
+    );
+  }
 
-    // Sum already taken leaves (exclude Rejected). We sum numberOfLeaves so half-days count.
-    const sumCursor = await this.db.query(aql`
-      RETURN SUM(
-        FOR l IN ${this.leavesCollection}
-          FILTER l.userKey == ${userKey}
-            AND l.leaveType == ${requestedLeaveType}
-            AND l.startDate >= ${monthStartISO}
-            AND l.startDate <= ${monthEndISO}
-            AND ( !HAS(l, 'leaveStatus') || l.leaveStatus != ${COMMON_STRING.REJECTED_STATUS_KEY} )
-          RETURN l.numberOfLeaves
-      )
-    `);
-    const sumArray = await sumCursor.all();
-    const alreadyTaken = (sumArray && sumArray.length > 0 && sumArray[0] !== null) ? Number(sumArray[0]) : 0;
+  // 4️⃣ Monthly cap (example: 2 leaves/month)
+  const cap = LeavesValidator.getMonthlyCapForLeaveName(balanceEntry.name);
 
-    if ((alreadyTaken + requested) > cap) {
-      throw new BadRequestException(`${balanceEntry.name} monthly limit exceeded. Already taken: ${alreadyTaken}, requested: ${requested}, cap: ${cap}`);
-    }
+  // Month range based on startDate
+  const start = new Date(dto.startDate);
+  const monthStartISO = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    1,
+  ).toISOString();
 
-    // --- Balance sufficiency check ---
-    if (balanceEntry.balance < requested) {
-      throw new BadRequestException(`Insufficient ${balanceEntry.name} balance. Available: ${balanceEntry.balance}, requested: ${requested}`);
-    }
+  const monthEndISO = new Date(
+    start.getFullYear(),
+    start.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  ).toISOString();
 
-    // Build leave record
-    const leaveRecord: any = {
-      userKey: dto.userKey || userKey,
-      startDate: dto.startDate,
-      endDate: dto.endDate,
-      leaveType: dto.leaveType,
-      reason: dto.reason || null,
-      numberOfLeaves: requested,
-      leaveDurationsType: dto.leaveDurationsType, // "Full Day" | "Half Day"
-      isActive: dto.isActive ?? true,
-      createdDate: new Date().toISOString(),
-      modifiedDate: null,
-      leaveStatus: dto.leaveStatus ?? 'Pending',
-      actionDate: null,
-      approverByName: null,
-      approverByKey: null,
-    };
+  // 5️⃣ Count ONLY APPROVED leaves in the month
+  const approvedCursor = await this.db.query(aql`
+    RETURN SUM(
+      FOR l IN ${this.leavesCollection}
+        FILTER l.userKey == ${userKey}
+          AND l.leaveType == ${requestedLeaveType}
+          AND l.startDate >= ${monthStartISO}
+          AND l.endDate <= ${monthEndISO}
+          AND l.leaveStatus == ${COMMON_STRING.APPROVED_STATUS_KEY}
+        RETURN l.numberOfLeaves
+    )
+  `);
 
-    // --- Save leave & update balance (simple sequential flow) ---
-    // NOTE: This sequential approach has a small race condition if two requests happen simultaneously.
-    // If you expect concurrency, consider using ArangoDB transactions or optimistic locking with _rev.
-    const saved = await this.leavesCollection.save(leaveRecord);
+  const approvedArr = await approvedCursor.all();
+  const approvedTaken =
+    approvedArr && approvedArr[0] != null ? Number(approvedArr[0]) : 0;
 
-    const response = {
+  // 🚫 BLOCK only if APPROVED leaves already hit cap
+  if (approvedTaken >= cap) {
+    throw new BadRequestException(
+      `${balanceEntry.name} monthly limit reached. ` +
+      `Approved leaves: ${approvedTaken}, Limit: ${cap}`,
+    );
+  }
+
+  // 6️⃣ Balance sufficiency check
+  if (balanceEntry.balance < requested) {
+    throw new BadRequestException(
+      `Insufficient ${balanceEntry.name} balance. ` +
+      `Available: ${balanceEntry.balance}, Requested: ${requested}`,
+    );
+  }
+
+  // 7️⃣ Build leave record
+  const leaveRecord: any = {
+    userKey: dto.userKey || userKey,
+    startDate: dto.startDate,
+    endDate: dto.endDate,
+    leaveType: dto.leaveType,
+    reason: dto.reason || null,
+    numberOfLeaves: requested,
+    leaveDurationsType: dto.leaveDurationsType,
+    isActive: dto.isActive ?? true,
+    createdDate: new Date().toISOString(),
+    modifiedDate: null,
+    leaveStatus: dto.leaveStatus ?? COMMON_STRING.PENDING_STATUS_KEY,
+    halfDayShiftType : dto.halfDayShiftType,
+    actionDate: null,
+    approverByName: null,
+    approverByKey: null,
+  };
+
+  // 8️⃣ Save leave
+  const saved = await this.leavesCollection.save(leaveRecord);
+
+  return {
+    message: 'Leave applied successfully',
+    statusCode: 201,
+    data: {
       _key: saved._key,
       _id: saved._id,
       _rev: saved._rev,
       ...leaveRecord,
-    };
-
-    return {
-      message: 'Leave applied successfully',
-      statusCode: 201,
-      data: response,
-    };
-  }
+    },
+  };
+}
 
   async cancelLeave(leaveId: string) {
     if (!leaveId) throw new BadRequestException("leaveId is required");
