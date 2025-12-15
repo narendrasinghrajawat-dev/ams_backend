@@ -8,9 +8,15 @@ import { AdminModule } from './modules/admin/admin.module';
 import { LeavesModule } from './modules/user/leaves/leaves.module';
 import { AttendanceModule } from './modules/user/attendance/attendance.module';
 import { MasterDataModule } from './modules/common/master data/masterData.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({ 
-  imports: [UserModule, AdminModule, AuthModule ,DatabaseModule  ,AttendanceModule, LeavesModule , MasterDataModule],
+  imports: [UserModule, AdminModule, AuthModule ,DatabaseModule  ,AttendanceModule, LeavesModule , MasterDataModule,
+      ConfigModule.forRoot({
+      isGlobal: true,        // <-- important
+      envFilePath: 'env/.env.dev',
+    }),
+  ],
   controllers: [AppController,], 
   providers: [AppService],
 })  
