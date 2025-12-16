@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Request, BadRequestException, Param, Get } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ChangePasswordDto } from './user-dto/change-password.dto';
 
@@ -10,7 +10,7 @@ export class UserController {
   async changePassword(
     @Body() dto: ChangePasswordDto,
     @Request() req: any,
-  ) {
+  ) { 
     // prefer authenticated user id, fallback to body.userKey (if present)
     const userKey = dto.userKey || req?.user?.sub || req?.user?.userId;
     if (!userKey) {
@@ -20,4 +20,12 @@ export class UserController {
     // delegate to service
     return this.userService.changePassword(userKey, dto.newPassword);
   }
+
+
+     @Get('getUserCalendar/:userKey/:year')
+      getUserCalendar(@Param('userKey') userKey: string, @Param('year') year: string,) {
+          return this.userService.getUserCalendar(userKey, Number(year));
+      } 
+
 }
+ 

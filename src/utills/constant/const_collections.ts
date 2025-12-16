@@ -3,9 +3,8 @@ export const COLLECTIONS = {
   ATTENDANCE: "attendance",
   APPLY_LEAVES: "applyLeaves",
   MASTER_DATA: "masterData",
-  LOGIN_USERS: "loginUsers",
-  PASSWORDS_OF_USERS: "passwordsOfUsers",
-
-  LEAVE_BALANCE : "leaveBalance"
+  LOGIN_USERS: "loginUsers", 
+  LEAVE_BALANCE : "leaveBalance",
+  HOLIDAYS : "holidays",
 };
-  
+   

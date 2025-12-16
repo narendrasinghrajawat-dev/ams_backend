@@ -21,4 +21,12 @@ export class AttendanceController {
     return this.attendanceService.getAllAttendance(userKey);
   } 
  
+
+   @Get('getActivitiesByDate/:userKey/:date') 
+  getActivitiesByDate(@Param('userKey') userKey: string, @Param('date') date: string, ) {
+    return this.attendanceService.getActivitiesByDate(userKey, date);
+  } 
+
+
+
 }

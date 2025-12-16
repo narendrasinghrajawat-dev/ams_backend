@@ -8,6 +8,7 @@ import { CreateUserDto } from "src/modules/user/user-dto/create-user.dto";
 import { UpdateUserDto } from "src/modules/user/user-dto/update-user-dto";
 import { LoginDto } from "../user/attendance/dto/login.dto";
 import { ChangePasswordDto } from "../user/user-dto/change-password.dto";
+import { CreateHolidayDto } from "./dto/create.holiday.dto";
 
 
 @Controller('admin')
@@ -116,5 +117,15 @@ fetchActivities(@Param('date') date: string) {
   }
 
 
+  
+@Post('addHoliday')  
+  async addHoliday(
+    @Body() dto: CreateHolidayDto,
+    @Request() req: any,
+  ) {
+    // delegate to service
+    return this.adminService.addHoliday(dto);
+  }
 
-}  
+
+}   

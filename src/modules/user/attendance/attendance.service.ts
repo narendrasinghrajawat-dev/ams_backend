@@ -141,6 +141,41 @@ async punch(user: any, dto: PunchDto) {
     };
   } 
 
+async getActivitiesByDate(userKey: string, currentDate: string) {
+  // 🔹 Normalize incoming date (ANY FORMAT → Date)
+  const parsedDate = new Date(currentDate);
+
+  // ❌ Invalid date safety check
+  if (isNaN(parsedDate.getTime())) { 
+    throw new Error('Invalid date format provided');
+  }
+
+  // 🔹 Convert to YYYY-MM-DD (UTC-safe)
+  const dateOnly = parsedDate.toISOString().split('T')[0];
+
+  // 🔹 Build day range
+  const startOfDay = `${dateOnly}T00:00:00.000Z`;
+  const endOfDay = `${dateOnly}T23:59:59.999Z`;
+
+  const cursor = await this.getDb().query(aql`
+    FOR att IN ${this.attendance}
+      FILTER att.userKey == ${userKey}
+      FILTER att.punchDate >= ${startOfDay}
+      FILTER att.punchDate <= ${endOfDay}
+      SORT att.punchDate DESC, att.punchTime DESC
+      RETURN att
+  `);
+
+  const activities = await cursor.all();
+
+  return {
+    message: 'Activities fetched successfully',
+    statusCode: 200, 
+    count: activities.length,
+    date: dateOnly,
+    data: activities,
+  };
+}
 
 
 

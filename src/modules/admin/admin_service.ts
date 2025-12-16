@@ -5,6 +5,7 @@ import { aql } from 'arangojs';
 import { COLLECTIONS } from 'src/utills/constant/const_collections';
 import { AdminLeaveActionDto } from './dto/admin-leave-action.dto';
 import { COMMON_STRING } from 'src/utills/constant/const_strings';
+import { CreateHolidayDto } from './dto/create.holiday.dto';
 
 @Injectable()
 export class AdminService {
@@ -13,6 +14,8 @@ export class AdminService {
   private attendance;
   private applyLeaves;
   private leaveBalance;
+  private holidays;
+
   constructor(
     @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
   ) {
@@ -21,6 +24,8 @@ export class AdminService {
     this.attendance = this.db.collection(COLLECTIONS.ATTENDANCE);
     this.applyLeaves = this.db.collection(COLLECTIONS.APPLY_LEAVES);
     this.leaveBalance = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
+    this.holidays = this.db.collection(COLLECTIONS.HOLIDAYS);
+
   } 
    
   // Create user (admin action)
@@ -501,6 +506,34 @@ async fetchActivitiesByDate(date: string) {
       },
     };
   }
+
+
+
+
+async addHoliday(dto: CreateHolidayDto) {
+  const holidays = this.db.collection(this.holidays);
+
+  // Normalize date
+  const isoDate = new Date(dto.date).toISOString();
+  const dateKey = isoDate.split('T')[0]; // yyyy-mm-dd
+
+  // Prevent duplicate
+  const exists = await holidays.documentExists(dateKey);
+  if (exists) {
+    throw new BadRequestException('Holiday already exists');
+  }
+
+  // Save (backend controlled fields)
+  await holidays.save({
+    date: isoDate,
+    name: dto.name,
+    type: dto.type, 
+    createdById: dto.createdById,               // ✅ from auth
+    createdAt: new Date().toISOString(), // ✅ backend time
+  }); 
+
+  return { message: 'Holiday added successfully' };
+}
 
 
 }

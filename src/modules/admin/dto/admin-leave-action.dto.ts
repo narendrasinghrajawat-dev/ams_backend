@@ -11,14 +11,14 @@ export class AdminLeaveActionDto {
   @IsString()
   @IsNotEmpty()
   leavesId: string;
-
+ 
   /**
    * The new status code for the leave request (e.g., "1" for Approved, "2" for Rejected).
    */
   @IsString()
   @IsNotEmpty() 
   leavesStatus: string;
- 
+   
   /**
    * The _key of the user performing the action (the Admin).
    */

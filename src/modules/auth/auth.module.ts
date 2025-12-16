@@ -5,6 +5,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { DatabaseModule } from 'src/database/database.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [DatabaseModule,
@@ -12,7 +13,6 @@ import { DatabaseModule } from 'src/database/database.module';
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'mySecretKey',
       signOptions: { expiresIn: '10d' },
-    
     }), 
   ],
   providers: [AuthService, JwtStrategy],

@@ -5,14 +5,13 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from '../user/attendance/dto/login.dto';
 import { COLLECTIONS } from 'src/utills/constant/const_collections';
-
+ 
 @Injectable()
 export class AuthService {
   private db: any;
     private users;
 
     private loginUsers;
-    private passwordsOfUsers;
 
     constructor(
         @Inject("ARANGO_CONNECTION") private readonly arango: ArangoProvider,
@@ -21,7 +20,6 @@ export class AuthService {
         this.db = this.arango.getDb();
         this.users = this.db.collection(COLLECTIONS.USERS);  
         this.loginUsers = this.db.collection(COLLECTIONS.LOGIN_USERS);
-        this.passwordsOfUsers = this.db.collection(COLLECTIONS.PASSWORDS_OF_USERS);
     }
 
 
@@ -72,16 +70,7 @@ export class AuthService {
     isActive: true,
   };
 
-  const passwordRecord = {
-    userKey: user._key,
-    email: user.email,
-    password: storedPwd,
-    changedAt: new Date().toISOString(),
-    isActive: true,
-  };
-
   await this.loginUsers.save(loginRecord);
-  await this.passwordsOfUsers.save(passwordRecord);
 
   // Build response user object (without password)
   const fullUser = { ...user, lat, long, deviceInformation, token };
