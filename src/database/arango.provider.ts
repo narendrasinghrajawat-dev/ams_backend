@@ -1,23 +1,25 @@
-import { Database } from 'arangojs';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Database } from 'arangojs';
 
 @Injectable()
 export class ArangoProvider {
- private db: any;  // Database() constructor you're using returns a Database-like object
+  private db: Database;
 
-
-  constructor() {
+  constructor(private readonly config: ConfigService) {
+ 
     this.db = new Database({
-      url: "https://testdb-drcongo.egov.africa:8529/",
-      databaseName: "AMS-Dev",   
-      auth: {
-        username: "root",
-        password: "Dr5YDR6ijnfnODP5QDle34M",
-      }
+      url: this.config.getOrThrow<string>('ARANGO_URL'),
+      databaseName: this.config.getOrThrow<string>('ARANGO_DB'),
+      auth: { 
+        username: this.config.getOrThrow<string>('ARANGO_USER'),
+        password: this.config.getOrThrow<string>('ARANGO_PASSWORD'),
+      },
     });
-  }
+  }   
 
-  getDb() {
+  getDb(): Database {
     return this.db;
   }
 }
+ 

@@ -11,3 +11,4 @@ import { ArangoProvider } from './arango.provider';
   exports: ['ARANGO_CONNECTION'],
 })
 export class DatabaseModule {}
+  
