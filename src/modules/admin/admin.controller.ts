@@ -9,6 +9,7 @@ import { UpdateUserDto } from "src/modules/user/user-dto/update-user-dto";
 import { LoginDto } from "../user/attendance/dto/login.dto";
 import { ChangePasswordDto } from "../user/user-dto/change-password.dto";
 import { CreateHolidayDto } from "./dto/create.holiday.dto";
+import { AddLeavesByAdminDto } from "./dto/add_leaves_by_admin";
 
 
 @Controller('admin')
@@ -101,6 +102,8 @@ fetchActivities(@Param('date') date: string) {
 }
 
 
+   @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
 @Post('changeUserPasswordByAdmin') 
   async changePassword(
     @Body() dto: ChangePasswordDto,
@@ -117,7 +120,8 @@ fetchActivities(@Param('date') date: string) {
   }
 
 
-  
+     @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
 @Post('addHoliday')  
   async addHoliday(
     @Body() dto: CreateHolidayDto,
@@ -128,4 +132,28 @@ fetchActivities(@Param('date') date: string) {
   }
 
 
-}   
+       @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
+@Post('addLeavesByAdmin')
+async addLeavesByAdmin(
+  @Body() dto: AddLeavesByAdminDto,
+  @Request() req: any,
+) {
+  return this.adminService.addLeavesByAdmin(dto); 
+} 
+
+
+
+   @UseGuards(JwtAuthGuard, RolesGuard)  
+    @Roles(Role.Admin)  
+
+@Get('getAllLeavesByAdmin')
+async getAllLeavesByAdmin() {
+  return this.adminService.getAllLeavesByAdmin();
+}
+ 
+ 
+
+} 
+
+

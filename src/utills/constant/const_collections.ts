@@ -6,5 +6,6 @@ export const COLLECTIONS = {
   LOGIN_USERS: "loginUsers", 
   LEAVE_BALANCE : "leaveBalance",
   HOLIDAYS : "holidays",
-};
+  ADDED_LEAVES_BY_ADMIN : "added_leaves_by_admin"
+}; 
    

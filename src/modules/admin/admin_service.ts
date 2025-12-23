@@ -6,6 +6,8 @@ import { COLLECTIONS } from 'src/utills/constant/const_collections';
 import { AdminLeaveActionDto } from './dto/admin-leave-action.dto';
 import { COMMON_STRING } from 'src/utills/constant/const_strings';
 import { CreateHolidayDto } from './dto/create.holiday.dto';
+import { AddLeavesByAdminDto } from './dto/add_leaves_by_admin';
+import { AdminHelper } from './helper/admin_halper';
 
 @Injectable()
 export class AdminService {
@@ -15,6 +17,9 @@ export class AdminService {
   private applyLeaves;
   private leaveBalance;
   private holidays;
+  private addedLeavesByAdmin;
+
+
 
   constructor(
     @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
@@ -25,6 +30,7 @@ export class AdminService {
     this.applyLeaves = this.db.collection(COLLECTIONS.APPLY_LEAVES);
     this.leaveBalance = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
     this.holidays = this.db.collection(COLLECTIONS.HOLIDAYS);
+    this.addedLeavesByAdmin = this.db.collection(COLLECTIONS.ADDED_LEAVES_BY_ADMIN);
 
   } 
    
@@ -52,7 +58,7 @@ export class AdminService {
         const leaveBalanceDoc = {
           userKey: savedUser._key,
           leavesBalance: [
-            { id: "1", name: "Casual/Sick Leave", balance: 24 , total : 24},
+            { id: "1", name: "Casual/Sick Leave", balance: 2 , total : 2},
             { id: "2", name: "Annual Leave", balance: annualLeaveBalance , total : annualLeaveBalance}
           ],
           isActive: true,
@@ -64,7 +70,7 @@ export class AdminService {
     } catch (err) {
       console.error("Error while creating leave balance doc:", err);
     }
-
+    
     return {
       message: 'New user created successfully',
       statusCode: 201,
@@ -164,6 +170,7 @@ export class AdminService {
 
     try {
       const result = await this.users.update(key, softDeletePayload);
+      const resultLeaveBalance = await this.leaveBalance.update(key, softDeletePayload);
       return {
         message: 'User soft-deleted successfully',
         statusCode: 200,
@@ -536,6 +543,105 @@ async addHoliday(dto: CreateHolidayDto) {
 }
 
 
+
+async addLeavesByAdmin(dto: AddLeavesByAdminDto) {
+
+  console.log('addLeavesByAdmin called')
+  const {
+    adminKey,
+    addLeaves,
+    leaveTypeId,
+    actionDate,
+  } = dto;
+
+  /** 🔑 Convert ISO date → YYYY-MM */
+  const monthKey = AdminHelper.getMonthKeyFromISO(actionDate);
+    console.log('monthKey called')
+
+  /** 🔴 1. Check if already executed for this month */
+  const existing = await this.db.query(aql`
+    FOR doc IN ${this.addedLeavesByAdmin}
+      FILTER doc.monthKey == ${monthKey}
+      RETURN doc
+  `);
+
+  if ((await existing.all()).length > 0) {
+    throw new BadRequestException(
+      `Leaves already added for month ${monthKey}`,
+    );
+  }
+    console.log('existing called')
+
+  /** 🔵 2. Update leave balance for ALL active users */
+  await this.db.query(aql`
+    FOR user IN ${this.leaveBalance} 
+      FILTER user.isActive == true
+      UPDATE user WITH {
+        leavesBalance: (
+          FOR l IN user.leavesBalance
+            RETURN l.id == ${leaveTypeId}
+              ? MERGE(l, { 
+                  total: l.total + ${addLeaves},
+                  balance: l.balance + ${addLeaves}
+                })
+              : l
+        )
+      } IN ${this.db.collection(COLLECTIONS.LEAVE_BALANCE)}
+  `);
+
+
+  console.log('query called')
+const meta = await this.addedLeavesByAdmin.save({
+  adminKey,
+  monthKey,
+  leaveTypeId,
+  addedLeaves: addLeaves,
+  actionDate,
+  createdAt: new Date().toISOString(),
+  isActive: true,
+});
+
+const savedDoc = await this.addedLeavesByAdmin.document(meta._key);
+
+return {
+  success: true,
+  statusCode: 200,
+  message: `Added ${addLeaves} leaves for all users for ${monthKey}`,
+  data: savedDoc,
+};
+ 
+} 
+
+
+async getAllLeavesByAdmin() {
+
+  const cursor = await this.db.query(aql`
+    FOR doc IN ${this.addedLeavesByAdmin}
+      SORT doc.createdAt DESC
+      RETURN {
+        _key: doc._key,
+        adminKey: doc.adminKey,
+        monthKey: doc.monthKey,
+        leaveTypeId: doc.leaveTypeId,
+        addedLeaves: doc.addedLeaves,
+        actionDate: doc.actionDate,
+        createdAt: doc.createdAt
+      }
+  `);
+
+  const dataList = await cursor.all();
+
+  return {
+    success: true,
+    total: dataList.length,
+    statusCode: 200,
+    data: dataList,
+  };
 }
+
+
+
+}
+
 
 

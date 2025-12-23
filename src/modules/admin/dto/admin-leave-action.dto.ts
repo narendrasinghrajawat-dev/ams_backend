@@ -16,7 +16,7 @@ export class AdminLeaveActionDto {
    * The new status code for the leave request (e.g., "1" for Approved, "2" for Rejected).
    */
   @IsString()
-  @IsNotEmpty() 
+  @IsNotEmpty()  
   leavesStatus: string;
    
   /**
