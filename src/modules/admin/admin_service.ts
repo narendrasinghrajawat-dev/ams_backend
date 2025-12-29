@@ -130,28 +130,7 @@ export class AdminService {
 
     const users = await cursor.all();
 
-    // const formatted = users.map((u) => ({
-    //   _key: u._key,
-    //   id: u._id,
-    //   _rev: u._rev,
-    //   firstName: u.firstName,
-    //   middleName: u.middleName,
-    //   lastName: u.lastName,
-    //   email: u.email,
-    //   countryCode: u.countryCode,
-    //   phoneNo: u.phoneNo,
-    //   username: u.username,
-    //   dob: u.dob,
-    //   genderId: u.genderId,
-    //   departmentId: u.departmentId,
-    //   isActive: u.isActive,
-    //   role: u.role,
-    //   roleId: u.roleId,
-    //   address: u.address, 
-    //   createdBy: u.createdBy,
-    //   createdAt: u.createdAt,
-    //   joinedDate
-    // }));
+  
 
     return {
       message: 'User list fetched successfully',
@@ -163,11 +142,14 @@ export class AdminService {
 
   // Delete user by _key
   async deleteUser(key: string) {
+    console.log('delete user start')
+    console.log(key)
+
     const softDeletePayload = {
       isActive: false,
       deletedAt: new Date(),
     };
-
+ 
     try {
       const result = await this.users.update(key, softDeletePayload);
       const resultLeaveBalance = await this.leaveBalance.update(key, softDeletePayload);

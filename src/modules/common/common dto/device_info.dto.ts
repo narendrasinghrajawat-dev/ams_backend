@@ -1,52 +1,85 @@
 import {
   IsString,
   IsNumber,
-  IsBoolean, // Added to handle uniqueId and androidId consistency, and isPhysicalDevice
-  IsOptional, 
+  IsBoolean,
+  IsOptional,
 } from 'class-validator';
 
 export class DeviceInfoDto {
-  // --- Core Device Info ---
-  
-  @IsString() 
+  // ---------- Common (ALL PLATFORMS) ----------
+
+  @IsString()
   os: string;
 
   @IsString()
-  version: string;
+  uniqueId: string;
+
+  @IsBoolean()
+  isPhysicalDevice: boolean;
+
+  // ---------- Android ----------
+
+  @IsString()
+  @IsOptional()
+  version?: string;
 
   @IsNumber()
-  sdkInt: number;
+  @IsOptional()
+  sdkInt?: number;
 
   @IsString()
-  model: string;
+  @IsOptional()
+  model?: string;
 
   @IsString()
-  brand: string;
+  @IsOptional()
+  brand?: string;
 
   @IsString()
-  manufacturer: string; // Added: Field exists in JSON
+  @IsOptional()
+  manufacturer?: string;
 
   @IsString()
-  device: string;
-
-  // --- Unique Identifiers ---
-
-  @IsString()
-  uniqueId: string; // Added: Field exists in JSON
-
-  @IsBoolean() // Assuming this is strictly a boolean value (true/false)
-  isPhysicalDevice: boolean; // Added: Field exists in JSON
+  @IsOptional()
+  device?: string;
 
   @IsString()
-  androidId: string; // Added: Field exists in JSON
-  
-  // --- Detailed/Optional Fields ---
-  
-  @IsString()
-  @IsOptional() // Might be empty or not always present, especially for iOS/Android cross-platform
-  fingerprint: string; // Added: Field exists in JSON
+  @IsOptional()
+  androidId?: string;
 
   @IsString()
-  @IsOptional() // Common for iOS, but empty in the provided Android sample
-  identifierForVendor: string; // Added: Field exists in JSON
+  @IsOptional()
+  fingerprint?: string;
+
+  // ---------- iOS ----------
+
+  @IsString()
+  @IsOptional()
+  identifierForVendor?: string;
+
+  // ---------- Web ----------
+
+  @IsString()
+  @IsOptional()
+  browserName?: string;
+
+  @IsString()
+  @IsOptional()
+  appVersion?: string;
+
+  @IsString()
+  @IsOptional()
+  userAgent?: string;
+
+  @IsString()
+  @IsOptional()
+  platform?: string;
+
+  @IsString()
+  @IsOptional()
+  vendor?: string;
+
+  @IsString()
+  @IsOptional()
+  language?: string;
 }
