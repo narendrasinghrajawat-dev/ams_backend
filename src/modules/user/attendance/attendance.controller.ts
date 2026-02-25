@@ -27,6 +27,11 @@ export class AttendanceController {
     return this.attendanceService.getActivitiesByDate(userKey, date);
   } 
 
+  
+   @Get('getAllTakenCurrentMonthWFH/:userKey') 
+  getAllTakenCurrentMonthWFH(@Param('userKey') userKey: string, ) {
+    return this.attendanceService.getAllTakenCurrentMonthWFH(userKey);
+  } 
 
 
-}
+} 

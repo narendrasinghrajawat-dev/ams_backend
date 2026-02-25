@@ -9,6 +9,8 @@ export class PunchDto {
   @IsString() @IsNotEmpty() punchDate: string;
   @IsString() lat: string;
   @IsString() long: string;
+  @IsBoolean() isWFH: boolean;
+
   @ValidateNested() 
   @Type(() => DeviceInfoDto)
   deviceInformation: DeviceInfoDto;

@@ -67,7 +67,7 @@ async punch(user: any, dto: PunchDto) {
 
     // 2) Geofence validation
     // await AttendanceHelper.ensureInsideOfficeRadius(db, dto.lat, dto.long);
-
+     
 
     const loginCursor = await db.query(aql`
       FOR l IN ${loginUsersCollection} 
@@ -100,8 +100,9 @@ async punch(user: any, dto: PunchDto) {
       punchType: dto.punchType,
       punchTime: dto.punchTime,
       punchDate: dto.punchDate,
-      lat: dto.lat,
+      lat: dto.lat, 
       long: dto.long,
+      isWFH : dto.isWFH,
       deviceInformation: dto.deviceInformation,
       createdDate: new Date().toISOString(),
       isActive: true,
@@ -169,8 +170,8 @@ async getActivitiesByDate(userKey: string, currentDate: string) {
   const activities = await cursor.all();
 
   return {
-    message: 'Activities fetched successfully',
-    statusCode: 200, 
+    message: 'Activities fetched successfully For Date ',
+    statusCode: 200,
     count: activities.length,
     date: dateOnly,
     data: activities,
@@ -178,5 +179,36 @@ async getActivitiesByDate(userKey: string, currentDate: string) {
 }
 
 
+async getAllTakenCurrentMonthWFH(userKey: string) {
+  const now = new Date();
+
+  // 🔹 First day of current month (UTC)
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  // 🔹 Last day of current month (UTC)
+  const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
+  const cursor = await this.getDb().query(aql`
+    FOR att IN ${this.attendance}
+      FILTER att.userKey == ${userKey}
+      FILTER att.punchType == "1" 
+      FILTER att.isWFH == true
+      FILTER att.punchDate >= ${startOfMonth.toISOString()}
+      FILTER att.punchDate <= ${endOfMonth.toISOString()}
+      COLLECT WITH COUNT INTO totalWFH
+      RETURN totalWFH
+  `);
+
+  const result = await cursor.all();
+  const total = result.length > 0 ? result[0] : 0;
+
+  return {
+    message: 'Current month WFH count fetched successfully',
+    statusCode: 200,
+    month: now.getUTCMonth() + 1,
+    year: now.getUTCFullYear(),
+    totalWFH: total,
+  };
+}
 
 } 

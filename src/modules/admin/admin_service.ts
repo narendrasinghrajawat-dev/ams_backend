@@ -37,8 +37,11 @@ export class AdminService {
   // Create user (admin action)
   async createUser(data: any, managerId: string) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
+      const employeeId = await AdminHelper.generateEmployeeId(this.db);
+
     const userData = {
       ...data,
+          employeeId,
       password: hashedPassword,
       createdBy: managerId,
       createdAt: new Date().toISOString(),

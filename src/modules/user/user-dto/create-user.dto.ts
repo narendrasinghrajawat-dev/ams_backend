@@ -30,6 +30,9 @@ export class CreateUserDto {
   @IsString() @IsNotEmpty() phoneNo: string;
   @IsString() @IsNotEmpty() username: string;
 
+ @IsOptional()  employeeId: string;
+ 
+  
   // NEW: password (required)
   @IsString()
   @IsNotEmpty()
