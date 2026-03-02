@@ -49,7 +49,7 @@ export class ApplyLeavesDto {
   @IsNotEmpty()
   leaveDurationsType: string; 
 
-    @IsString()
+  @IsString()
   halfDayShiftType: string; 
 
   @IsBoolean()

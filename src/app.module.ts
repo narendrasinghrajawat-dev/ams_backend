@@ -14,15 +14,16 @@ import { ConfigModule } from '@nestjs/config';
   imports: [UserModule, AdminModule, AuthModule ,DatabaseModule  ,AttendanceModule, LeavesModule , MasterDataModule,
       ConfigModule.forRoot({
       isGlobal: true,        // <-- important
-      // envFilePath: 'env/.env.dev',
-      envFilePath: 'env/.env.test',
-    }),
+      envFilePath: 'env/.env.dev',
+      // envFilePath: 'env/.env.test',
+      // envFilePath: 'env/.env.prod',  
+    }), 
   ],
   controllers: [AppController,],  
-  providers: [AppService],
+  providers: [AppService], 
 })   
 export class AppModule {  
   
-}
+} 
 
   

@@ -3,7 +3,6 @@
 export class AdminHelper {
 
 
-
  static async generateEmployeeId(db: any): Promise<string> {
   const query = `
     FOR u IN users

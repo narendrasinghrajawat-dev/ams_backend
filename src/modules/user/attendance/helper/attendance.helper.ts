@@ -121,7 +121,6 @@ export class AttendanceHelper {
       officeLng,
     );
 
-    console.log(`Distance user–office: ${distance} meters`);
 
     if (distance > officeRadius) {
       throw new BadRequestException(

@@ -41,7 +41,7 @@ export class AdminService {
 
     const userData = {
       ...data,
-      employeeId,
+          employeeId,
       password: hashedPassword,
       createdBy: managerId,
       createdAt: new Date().toISOString(),
@@ -94,12 +94,21 @@ export class AdminService {
         role: userData.role,
         roleId: userData.roleId,
         departmentId: userData.departmentId,
-        address: userData.address,
+        address: {
+          street: userData.address?.street,
+          cityName: userData.address?.cityName,
+          cityId: userData.address?.cityId,
+          stateName: userData.address?.stateName,
+          stateId: userData.address?.stateId,
+          zipCode: userData.address?.zipCode,
+          countryName: userData.address?.countryName,
+          countryId: userData.address?.countryId,
+        },
         createdBy: userData.createdBy,
         createdAt: userData.createdAt,
         joinedDate : userData.joinedDate
       },
-    }; 
+    };
   }
 
   // Find by email (admin helper)
@@ -114,14 +123,14 @@ export class AdminService {
   }
 
   // Get all users with role "user" (admin list)
-  async getAllUsers() { 
+  async getAllUsers() {
     const cursor = await this.db.query(aql`
       FOR u IN ${this.users}
       FILTER u.roleId == ${COMMON_STRING.USER_ID} && u.isActive == true
       SORT u.createdAt DESC
       RETURN u 
     `);
-
+ 
     const users = await cursor.all();
 
   
@@ -561,7 +570,7 @@ async addLeavesByAdmin(dto: AddLeavesByAdminDto) {
   `);
 
 
- const meta = await this.addedLeavesByAdmin.save({
+const meta = await this.addedLeavesByAdmin.save({
   adminKey,
   monthKey,
   leaveTypeId,
@@ -601,7 +610,7 @@ async getAllLeavesByAdmin() {
 
   const dataList = await cursor.all();
 
-  return {
+  return { 
     success: true,
     total: dataList.length,
     statusCode: 200,

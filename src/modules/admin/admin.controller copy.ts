@@ -26,11 +26,11 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Admin)
-  @Get('user-list') 
-  getUserList() {   
+  @Get('user-list')
+  getUserList() {
     return this.adminService.getAllUsers();
   }
-  
+
   @UseGuards(JwtAuthGuard, RolesGuard)      
   @Roles(Role.Admin)
   @Delete('delete-user/:key') 
@@ -44,7 +44,7 @@ export class AdminController {
   updateUser(
     @Param('key') key: string,
     @Body() dto: UpdateUserDto
-  ) {
+  ) { 
     return this.adminService.updateUser(key, dto);
 
   }

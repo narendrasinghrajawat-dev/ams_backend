@@ -10,7 +10,6 @@ export async function seedAdminUser(db) {
   const count = await cursor.next();
 
   if (count === 0) {
-    console.log("⚠️ No users found. Creating default manager...");
 
     const hashedPassword = await bcrypt.hash("admin123", 10);
  
@@ -21,9 +20,6 @@ export async function seedAdminUser(db) {
       role: "manager"
     }); 
 
-    console.log("✔ Default manager created:");
-    console.log("   Email: admin@gmail.com");
-    console.log("   Password: admin123");
   } else {
     console.log("✔ Users already exist. Skipping admin creation.");
   }

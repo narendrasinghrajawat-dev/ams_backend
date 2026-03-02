@@ -202,13 +202,14 @@ async getAllTakenCurrentMonthWFH(userKey: string) {
   const result = await cursor.all();
   const total = result.length > 0 ? result[0] : 0;
 
+ 
   return {
     message: 'Current month WFH count fetched successfully',
     statusCode: 200,
     month: now.getUTCMonth() + 1,
     year: now.getUTCFullYear(),
-    totalWFH: total,
+    data: total,
   };
 }
 
-} 
+}  

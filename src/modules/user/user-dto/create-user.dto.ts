@@ -45,9 +45,7 @@ export class CreateUserDto {
   isActive: boolean;
   @IsString() @IsOptional() role: string;
   @IsString() @IsNotEmpty() roleId: string;
+  @IsString() @IsNotEmpty() address: string;
+  
 
-  @ValidateNested()
-  @Type(() => AddressDto)
-  @IsNotEmpty()
-  address: AddressDto;
-}
+}  

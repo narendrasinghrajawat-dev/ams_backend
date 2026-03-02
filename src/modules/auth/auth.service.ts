@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from '../user/attendance/dto/login.dto';
 import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { AuthHelper } from './helper/auth.helper';
  
 @Injectable()
 export class AuthService {
@@ -55,12 +56,18 @@ export class AuthService {
   if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
 
   // Prepare payload and token once
-  const payload = { sub: user._key, role: user.role, email: user.email };
+ 
+// In your login method, replace the role mapping section with:
+const payload = {  
+  sub: user._key, 
+  role: AuthHelper.mapRoleIdToName(user.roleId),  // This will return 'admin' for roleId '2'
+  email: user.email 
+};
   const token = this.jwtService.sign(payload);
 
   // Save login audit and password history (keep as you had)
   const loginRecord = {
-    userKey: user._key,
+    userKey: user._key, 
     email: user.email,
     loginAt: new Date().toISOString(),
     lat,
@@ -81,7 +88,8 @@ export class AuthService {
     statusCode: 200,
     data: { ...fullUser, loginAt: loginRecord.loginAt },
   };
-} 
-
+}  
+ 
 
 }
+ 

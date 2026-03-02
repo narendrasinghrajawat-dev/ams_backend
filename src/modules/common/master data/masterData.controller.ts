@@ -14,4 +14,4 @@ export class MasterDataController {
   getMasterData() {
     return this.masterDataService.getMasterData();
    }
-}
+}  
