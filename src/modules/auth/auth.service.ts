@@ -1,95 +1,81 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { ArangoProvider } from 'src/database/arango.provider';
-import { aql } from 'arangojs';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from '../user/attendance/dto/login.dto';
-import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { UserDoc } from 'src/database/schemas/user.schema';
+import { LoginUserDoc } from 'src/database/schemas/login_user.schema';
 import { AuthHelper } from './helper/auth.helper';
- 
+import { formatMongoDoc } from 'src/utills/db-helper';
+
 @Injectable()
 export class AuthService {
-  private db: any;
-    private users;
+  constructor(
+    @InjectModel(UserDoc.name) private readonly userModel: Model<UserDoc>,
+    @InjectModel(LoginUserDoc.name) private readonly loginUserModel: Model<LoginUserDoc>,
+    private jwtService: JwtService,
+  ) {}
 
-    private loginUsers;
+  async login(dto: LoginDto) {
+    const { email, password, lat, long, deviceInformation } = dto;
 
-    constructor(
-        @Inject("ARANGO_CONNECTION") private readonly arango: ArangoProvider,
-        private jwtService: JwtService,
-    ) {
-        this.db = this.arango.getDb();
-        this.users = this.db.collection(COLLECTIONS.USERS);  
-        this.loginUsers = this.db.collection(COLLECTIONS.LOGIN_USERS);
+    if (!email || !password) {
+      throw new UnauthorizedException('Email and password are required');
     }
 
+    // Case-insensitive email lookup
+    const user = await this.userModel.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') },
+    });
 
- async login(dto: LoginDto) {
-  const { email, password, lat, long, deviceInformation } = dto;
+    if (!user) throw new UnauthorizedException('Invalid email or password');
 
-  if (!email || !password) {
-    throw new UnauthorizedException('Email and password are required');
+    // Ensure stored password exists
+    const storedPwd = user.password;
+    if (!storedPwd) throw new UnauthorizedException('Invalid email or password');
+
+    // Detect bcrypt-style hash: $2a$, $2b$, $2y$
+    const isBcryptHash = typeof storedPwd === 'string' && /^\$2[aby]\$/.test(storedPwd);
+
+    const passwordMatches = isBcryptHash
+      ? await bcrypt.compare(password, storedPwd)
+      : storedPwd === password;
+
+    if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
+
+    const formattedUser = formatMongoDoc(user);
+
+    // Prepare payload and token
+    const payload = {  
+      sub: formattedUser._key, 
+      role: AuthHelper.mapRoleIdToName(formattedUser.roleId),  // returns 'admin' for roleId '2'
+      email: formattedUser.email 
+    };
+    const token = this.jwtService.sign(payload);
+
+    // Save login audit
+    const loginRecord = {
+      userKey: formattedUser._key, 
+      email: formattedUser.email,
+      loginAt: new Date().toISOString(),
+      lat,
+      long,
+      deviceInformation,
+      status: 'success',
+      isActive: true,
+    };
+
+    await new this.loginUserModel(loginRecord).save();
+
+    // Build response user object (without password)
+    const fullUser = { ...formattedUser, lat, long, deviceInformation, token };
+    if (fullUser.password) delete fullUser.password;
+
+    return {
+      message: 'Login successful',
+      statusCode: 200,
+      data: { ...fullUser, loginAt: loginRecord.loginAt },
+    };
   }
-
-  // Case-insensitive email lookup
-  const cursor = await this.db.query(aql`
-    FOR u IN ${this.users}
-      FILTER LOWER(u.email) == LOWER(${email})
-      LIMIT 1
-      RETURN u
-  `);
-
-  const user = await cursor.next();
-  if (!user) throw new UnauthorizedException('Invalid email or password');
-
-  // Ensure stored password exists
-  const storedPwd = user.password;
-  if (!storedPwd) throw new UnauthorizedException('Invalid email or password');
-
-  // Detect bcrypt-style hash: $2a$, $2b$, $2y$
-  const isBcryptHash = typeof storedPwd === 'string' && /^\$2[aby]\$/.test(storedPwd);
-
-  const passwordMatches = isBcryptHash
-    ? await bcrypt.compare(password, storedPwd)
-    : storedPwd === password;
-
-  if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
-
-  // Prepare payload and token once
- 
-// In your login method, replace the role mapping section with:
-const payload = {  
-  sub: user._key, 
-  role: AuthHelper.mapRoleIdToName(user.roleId),  // This will return 'admin' for roleId '2'
-  email: user.email 
-};
-  const token = this.jwtService.sign(payload);
-
-  // Save login audit and password history (keep as you had)
-  const loginRecord = {
-    userKey: user._key, 
-    email: user.email,
-    loginAt: new Date().toISOString(),
-    lat,
-    long,
-    deviceInformation,
-    status: 'success',
-    isActive: true,
-  };
-
-  await this.loginUsers.save(loginRecord);
-
-  // Build response user object (without password)
-  const fullUser = { ...user, lat, long, deviceInformation, token };
-  if (fullUser.password) delete fullUser.password;
-
-  return {
-    message: 'Login successful',
-    statusCode: 200,
-    data: { ...fullUser, loginAt: loginRecord.loginAt },
-  };
-}  
- 
-
 }
- 

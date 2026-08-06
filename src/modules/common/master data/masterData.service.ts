@@ -1,29 +1,22 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Database } from 'arangojs';
-import { ArangoProvider } from 'src/database/arango.provider';
-import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { MasterDataDoc } from 'src/database/schemas/master_data.schema';
+import { formatMongoDoc } from 'src/utills/db-helper';
 
 @Injectable()
 export class MasterDataService {
-  private db;
-  private masterData;
-
   constructor(
-    @Inject('ARANGO_CONNECTION') private readonly arango: ArangoProvider,
-  ) {
-    this.db = this.arango.getDb(); 
-    this.masterData = this.db.collection(COLLECTIONS.MASTER_DATA);
-  }   
-   
-  async getMasterData() {
-    const collection = this.db.collection("masterData");
-    const masterData = await collection.document('master_data');
+    @InjectModel(MasterDataDoc.name) private readonly masterDataModel: Model<MasterDataDoc>,
+  ) {}
 
-    return{
+  async getMasterData() {
+    const masterData = await this.masterDataModel.findOne({}).lean();
+
+    return {
       message: 'Master data fetched successfully',
       statusCode: 200,
-      data: masterData,
-    }
-
+      data: formatMongoDoc(masterData),
+    };
   }
-} 
+}

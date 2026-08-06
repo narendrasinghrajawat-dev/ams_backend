@@ -1,80 +1,68 @@
-// File: src/modules/leaves/leaves.service.ts
-import { Inject, Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
-import { aql } from "arangojs";
+import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import { ApplyLeavesDto } from "../leaves/dto/apply_leaves.dto";
-import { ArangoProvider } from "src/database/arango.provider";
-import { COLLECTIONS } from "../../../utills/constant/const_collections";
 import { COMMON_STRING } from "src/utills/constant/const_strings";
 import { LeavesValidator } from "./helper/leave.helper";
+import { UserDoc } from "src/database/schemas/user.schema";
+import { ApplyLeavesDoc } from "src/database/schemas/apply_leaves.schema";
+import { LeaveBalanceDoc } from "src/database/schemas/leave_balance.schema";
+import { formatMongoDoc } from "src/utills/db-helper";
 
 @Injectable()
 export class LeavesService {
-  private db: any;
-  private leavesCollection: any;
-  private leavesBalanceCollection: any;
-
-  constructor(@Inject('ARANGO_CONNECTION') private readonly arangoProvider: ArangoProvider) {
-    this.db = this.arangoProvider.getDb();
-    this.leavesCollection = this.db.collection(COLLECTIONS.APPLY_LEAVES);
-    this.leavesBalanceCollection = this.db.collection(COLLECTIONS.LEAVE_BALANCE);
-  }
+  constructor(
+    @InjectModel(UserDoc.name) private readonly userModel: Model<UserDoc>,
+    @InjectModel(ApplyLeavesDoc.name) private readonly applyLeavesModel: Model<ApplyLeavesDoc>,
+    @InjectModel(LeaveBalanceDoc.name) private readonly leaveBalanceModel: Model<LeaveBalanceDoc>,
+  ) {}
 
   // Get leaves for a user key
- async getLeavesStatusByUserKey(userKey: string) {
-  if (!userKey) {
-    throw new BadRequestException('userKey is required');
+  async getLeavesStatusByUserKey(userKey: string) {
+    if (!userKey) {
+      throw new BadRequestException('userKey is required');
+    }
+
+    const leaves = await this.applyLeavesModel.find({ userKey })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formattedLeaves: any[] = [];
+    for (const l of leaves) {
+      const formatted = formatMongoDoc(l);
+      let approverByName: string | null = null;
+      if (formatted.approverByKey) {
+        const approverDoc = await this.userModel.findById(formatted.approverByKey).lean();
+        if (approverDoc) {
+          approverByName = [
+            approverDoc.firstName,
+            approverDoc.middleName,
+            approverDoc.lastName
+          ].filter(Boolean).join(" ");
+        }
+      }
+      formattedLeaves.push({
+        ...formatted,
+        approverByName,
+      });
+    }
+
+    return {
+      message: 'Leaves fetched successfully',
+      statusCode: 200,
+      count: formattedLeaves.length,
+      data: formattedLeaves,
+    };
   }
-
-  const db = this.db;
-
-  const cursor = await db.query(aql`
-    FOR l IN ${this.leavesCollection}
-      FILTER l.userKey == ${userKey}
-      SORT l.appliedAt DESC
-      // Fetch approver user doc (if approverByKey exists)
-      LET approverDoc = (
-        // If approverByKey is missing/null, DOCUMENT will return null
-        DOCUMENT(${this.db.collection(COLLECTIONS.USERS)}, l.approverByKey)
-      )
-      RETURN MERGE(l, {
-        approverByName: (
-          approverDoc ?
-            CONCAT_SEPARATOR(" ",
-              approverDoc.firstName,
-              approverDoc.middleName,
-              approverDoc.lastName
-            )
-          : null
-        )
-      })
-  `);
-
-  const leavesStatusList = await cursor.all();
-
-  return {
-    message: 'Leaves fetched successfully',
-    statusCode: 200,
-    count: leavesStatusList.length,
-    data: leavesStatusList,
-  };
-}
 
   async getLeavesBalanceByUserKey(userKey: string) {
     if (!userKey) {
       throw new BadRequestException('userKey is required');
     }
 
-    const db = this.db;
-
-    const cursor = await db.query(aql`
-      FOR l IN ${this.leavesBalanceCollection}
-        FILTER l.userKey == ${userKey}
-        SORT l.createdDate DESC
-        LIMIT 1
-        RETURN l
-    `);
-
-    const leaveBalance = await cursor.next(); // return single document
+    const leaveBalance = await this.leaveBalanceModel.findOne({ userKey })
+      .sort({ createdDate: -1 })
+      .lean();
 
     if (!leaveBalance) {
       return {
@@ -87,145 +75,127 @@ export class LeavesService {
     return {
       message: 'Leave balance fetched successfully',
       statusCode: 200,
-      data: leaveBalance,
+      data: formatMongoDoc(leaveBalance),
     };
   }
 
   // Apply leaves: saves a new leave record with status 'pending'
-async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
-  // 1️⃣ Basic required param
-  if (!userKey) {
-    throw new BadRequestException('userKey is required');
-  }
+  async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
+    if (!userKey) {
+      throw new BadRequestException('userKey is required');
+    }
 
-  // 2️⃣ Common validation
-  LeavesValidator.validateDates(dto.startDate, dto.endDate);
-  LeavesValidator.validateNumberOfLeaves(dto.numberOfLeaves); 
+    // Common validation
+    LeavesValidator.validateDates(dto.startDate, dto.endDate);
+    LeavesValidator.validateNumberOfLeaves(dto.numberOfLeaves); 
 
-  const requested = Number(dto.numberOfLeaves);
-  const requestedLeaveType = dto.leaveType;
+    const requested = Number(dto.numberOfLeaves);
+    const requestedLeaveType = dto.leaveType;
 
-  // 3️⃣ Fetch latest leave balance
-  const lbCursor = await this.db.query(aql`
-    FOR lb IN ${this.leavesBalanceCollection}
-      FILTER lb.userKey == ${userKey}
-      SORT lb.createdDate DESC
-      LIMIT 1
-      RETURN lb
-  `);
+    // Fetch latest leave balance
+    const leaveBalanceDoc = await this.leaveBalanceModel.findOne({ userKey })
+      .sort({ createdDate: -1 })
+      .lean();
 
-  const leaveBalanceDoc = await lbCursor.next();
-  if (!leaveBalanceDoc) {
-    throw new BadRequestException('Leave balance not found for user');
-  }
+    if (!leaveBalanceDoc) {
+      throw new BadRequestException('Leave balance not found for user');
+    }
 
-  const balanceEntry = (leaveBalanceDoc.leavesBalance || []).find(
-    (e: any) =>
-      String(e.id) === String(requestedLeaveType) ||
-      e.name === requestedLeaveType
-  );
-
-  if (!balanceEntry) {
-    throw new BadRequestException(
-      `User does not have a balance entry for leave type ${requestedLeaveType}`,
+    const balanceEntry = (leaveBalanceDoc.leavesBalance || []).find(
+      (e: any) =>
+        String(e.id) === String(requestedLeaveType) ||
+        e.name === requestedLeaveType
     );
+
+    if (!balanceEntry) {
+      throw new BadRequestException(
+        `User does not have a balance entry for leave type ${requestedLeaveType}`,
+      );
+    }
+
+    // Monthly cap check
+    const cap = LeavesValidator.getMonthlyCapForLeaveName(balanceEntry.name);
+
+    // Month range based on startDate
+    const start = new Date(dto.startDate);
+    const monthStartISO = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      1,
+    ).toISOString();
+
+    const monthEndISO = new Date(
+      start.getFullYear(),
+      start.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).toISOString();
+
+    // Count ONLY APPROVED leaves in the month
+    const approvedLeaves = await this.applyLeavesModel.find({
+      userKey,
+      leaveType: requestedLeaveType,
+      startDate: { $gte: monthStartISO },
+      endDate: { $lte: monthEndISO },
+      leaveStatus: COMMON_STRING.APPROVED_STATUS_KEY,
+    }).lean();
+
+    const approvedTaken = approvedLeaves.reduce((sum, item) => sum + Number(item.numberOfLeaves || 0), 0);
+
+    // BLOCK only if APPROVED leaves already hit cap
+    if (approvedTaken >= cap) {
+      throw new BadRequestException(
+        `${balanceEntry.name} monthly limit reached. ` +
+        `Approved leaves: ${approvedTaken}, Limit: ${cap}`,
+      );
+    }
+
+    // Balance sufficiency check
+    if (balanceEntry.balance < requested) {
+      throw new BadRequestException(
+        `Insufficient ${balanceEntry.name} balance. ` +
+        `Available: ${balanceEntry.balance}, Requested: ${requested}`,
+      );
+    }
+
+    // Build leave record
+    const leaveRecord: any = {
+      userKey: dto.userKey || userKey,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      leaveType: dto.leaveType,
+      reason: dto.reason || null,
+      numberOfLeaves: requested,
+      leaveDurationsType: dto.leaveDurationsType,
+      isActive: dto.isActive ?? true,
+      createdDate: new Date().toISOString(),
+      modifiedDate: null,
+      leaveStatus: dto.leaveStatus ?? COMMON_STRING.PENDING_STATUS_KEY,
+      halfDayShiftType : dto.halfDayShiftType,
+      actionDate: null,
+      approverByName: null,
+      approverByKey: null,
+    };
+
+    // Save leave
+    const saved = await new this.applyLeavesModel(leaveRecord).save();
+    const formattedSaved = formatMongoDoc(saved);
+
+    return {
+      message: 'Leave applied successfully',
+      statusCode: 201,
+      data: formattedSaved,
+    };
   }
-
-  // 4️⃣ Monthly cap (example: 2 leaves/month)
-  const cap = LeavesValidator.getMonthlyCapForLeaveName(balanceEntry.name);
-
-  // Month range based on startDate
-  const start = new Date(dto.startDate);
-  const monthStartISO = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    1,
-  ).toISOString();
-
-  const monthEndISO = new Date(
-    start.getFullYear(),
-    start.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999,
-  ).toISOString();
-
-  // 5️⃣ Count ONLY APPROVED leaves in the month
-  const approvedCursor = await this.db.query(aql`
-    RETURN SUM(
-      FOR l IN ${this.leavesCollection}
-        FILTER l.userKey == ${userKey}
-          AND l.leaveType == ${requestedLeaveType}
-          AND l.startDate >= ${monthStartISO}
-          AND l.endDate <= ${monthEndISO}
-          AND l.leaveStatus == ${COMMON_STRING.APPROVED_STATUS_KEY}
-        RETURN l.numberOfLeaves
-    )
-  `);
-
-  const approvedArr = await approvedCursor.all();
-  const approvedTaken =
-    approvedArr && approvedArr[0] != null ? Number(approvedArr[0]) : 0;
-
-  // 🚫 BLOCK only if APPROVED leaves already hit cap
-  if (approvedTaken >= cap) {
-    throw new BadRequestException(
-      `${balanceEntry.name} monthly limit reached. ` +
-      `Approved leaves: ${approvedTaken}, Limit: ${cap}`,
-    );
-  }
-
-  // 6️⃣ Balance sufficiency check
-  if (balanceEntry.balance < requested) {
-    throw new BadRequestException(
-      `Insufficient ${balanceEntry.name} balance. ` +
-      `Available: ${balanceEntry.balance}, Requested: ${requested}`,
-    );
-  }
-
-  // 7️⃣ Build leave record
-  const leaveRecord: any = {
-    userKey: dto.userKey || userKey,
-    startDate: dto.startDate,
-    endDate: dto.endDate,
-    leaveType: dto.leaveType,
-    reason: dto.reason || null,
-    numberOfLeaves: requested,
-    leaveDurationsType: dto.leaveDurationsType,
-    isActive: dto.isActive ?? true,
-    createdDate: new Date().toISOString(),
-    modifiedDate: null,
-    leaveStatus: dto.leaveStatus ?? COMMON_STRING.PENDING_STATUS_KEY,
-    halfDayShiftType : dto.halfDayShiftType,
-    actionDate: null,
-    approverByName: null,
-    approverByKey: null,
-  };
-
-  // 8️⃣ Save leave
-  const saved = await this.leavesCollection.save(leaveRecord);
-
-  return {
-    message: 'Leave applied successfully',
-    statusCode: 201,
-    data: {
-      _key: saved._key,
-      _id: saved._id,
-      _rev: saved._rev,
-      ...leaveRecord,
-    },
-  };
-}
 
   async cancelLeave(leaveId: string) {
     if (!leaveId) throw new BadRequestException("leaveId is required");
 
-    const db = this.db;
-
     // Find leave record
-    const leave = await this.leavesCollection.document(leaveId).catch(() => null);
+    const leave = await this.applyLeavesModel.findById(leaveId);
 
     if (!leave) {
       throw new NotFoundException(`Leave with ID ${leaveId} not found`);
@@ -241,13 +211,13 @@ async applyLeaves(userKey: string, dto: ApplyLeavesDto) {
       cancelledAt: new Date().toISOString(), 
     };
 
-    await this.leavesCollection.update(leaveId, updatedFields);
+    const updated = await this.applyLeavesModel.findByIdAndUpdate(leaveId, updatedFields, { new: true });
+    const formatted = formatMongoDoc(updated);
 
     return {
       message: "Leave cancelled successfully",
       statusCode: 200,
-      data: { ...leave, ...updatedFields },
+      data: formatted,
     };
   }
 }
-

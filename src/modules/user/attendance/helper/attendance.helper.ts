@@ -1,27 +1,24 @@
 import { BadRequestException } from '@nestjs/common';
-import { aql } from 'arangojs';
-import { COLLECTIONS } from 'src/utills/constant/const_collections';
+import { Model } from 'mongoose';
 import { PunchDto } from '../dto/punch.dto';
 import { COMMON_STRING } from 'src/utills/constant/const_strings';
 import { DeviceInfoDto } from 'src/modules/common/common dto/device_info.dto';
-
+import { AttendanceDoc } from 'src/database/schemas/attendance.schema';
+import { MasterDataDoc } from 'src/database/schemas/master_data.schema';
 
 export class AttendanceHelper {
   // ---- Duplicate punch validation ----
-  static async ensureNoDuplicatePunch(db: any, userKey: string, dto: PunchDto) {
-    const attendanceCollection = db.collection(COLLECTIONS.ATTENDANCE);
-
-    const cursor = await db.query(aql`
-      FOR att IN ${attendanceCollection}
-        FILTER att.userKey == ${userKey}
-          AND att.punchDate == ${dto.punchDate}
-          AND att.punchType == ${dto.punchType}
-          AND att.isActive == true
-        LIMIT 1
-        RETURN att
-    `);
-
-    const existing = await cursor.next();
+  static async ensureNoDuplicatePunch(
+    attendanceModel: Model<AttendanceDoc>,
+    userKey: string,
+    dto: PunchDto,
+  ) {
+    const existing = await attendanceModel.findOne({
+      userKey,
+      punchDate: dto.punchDate,
+      punchType: dto.punchType,
+      isActive: true,
+    });
 
     if (existing) {
       const punchLabel =
@@ -61,12 +58,10 @@ export class AttendanceHelper {
   }
 
   static async ensureInsideOfficeRadius(
-    db: any,
+    masterDataModel: Model<MasterDataDoc>,
     userLatRaw: string | number | null | undefined,
     userLngRaw: string | number | null | undefined,
   ) {
-    const masterCollection = db.collection(COLLECTIONS.MASTER_DATA);
-
     const userLat = Number(userLatRaw);
     const userLng = Number(userLngRaw);
 
@@ -81,14 +76,7 @@ export class AttendanceHelper {
       throw new BadRequestException('Invalid latitude/longitude for punch.');
     }
 
-    const cursor = await db.query(aql`
-      FOR m IN ${masterCollection}
-        FILTER m.isActive == true
-        LIMIT 1
-        RETURN m
-    `);
-
-    const master = await cursor.next();
+    const master = await masterDataModel.findOne({});
 
     if (!master) {
       throw new BadRequestException(
@@ -120,7 +108,6 @@ export class AttendanceHelper {
       officeLat,
       officeLng,
     );
-
 
     if (distance > officeRadius) {
       throw new BadRequestException(
