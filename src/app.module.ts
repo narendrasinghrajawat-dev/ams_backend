@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './modules/user/user.module';
@@ -9,6 +9,10 @@ import { LeavesModule } from './modules/user/leaves/leaves.module';
 import { AttendanceModule } from './modules/user/attendance/attendance.module';
 import { MasterDataModule } from './modules/common/master data/masterData.module';
 import { ConfigModule } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { UserDoc } from './database/schemas/user.schema';
+import { seedAdminUser } from './modules/user/user.seed';
 
 @Module({ 
   imports: [UserModule, AdminModule, AuthModule ,DatabaseModule  ,AttendanceModule, LeavesModule , MasterDataModule,
@@ -22,8 +26,14 @@ import { ConfigModule } from '@nestjs/config';
   controllers: [AppController,],  
   providers: [AppService], 
 })   
-export class AppModule {  
-  
+export class AppModule implements OnModuleInit {
+  constructor(
+    @InjectModel(UserDoc.name) private readonly userModel: Model<UserDoc>,
+  ) {}
+
+  async onModuleInit() {
+    await seedAdminUser(this.userModel);
+  }
 } 
 
   
