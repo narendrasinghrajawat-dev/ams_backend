@@ -3,21 +3,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsEmail,
-  ValidateNested,
+  IsBoolean,
   MinLength,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-
-class AddressDto {
-  @IsString() @IsNotEmpty() street: string;
-  @IsString() @IsNotEmpty() cityName: string;
-  @IsString() @IsNotEmpty() cityId: string;
-  @IsString() @IsNotEmpty() stateName: string;
-  @IsString() @IsNotEmpty() stateId: string;
-  @IsString() @IsNotEmpty() zipCode: string;
-  @IsString() @IsNotEmpty() countryName: string;
-  @IsString() @IsNotEmpty() countryId: string;
-}
 
 export class CreateUserDto {
   @IsString() @IsNotEmpty() firstName: string;
@@ -30,22 +18,19 @@ export class CreateUserDto {
   @IsString() @IsNotEmpty() phoneNo: string;
   @IsString() @IsNotEmpty() username: string;
 
- @IsOptional()  employeeId: string;
- 
+  @IsOptional() @IsString() employeeId?: string;
   
-  // NEW: password (required)
+  // password (required)
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)               // optional: enforce min length
+  @MinLength(6)
   password: string;
 
-  @IsOptional() dob?: string;
+  @IsOptional() @IsString() dob?: string;
   @IsString() @IsNotEmpty() genderId: string;
-  @IsString() @IsOptional() departmentId: string;
-  isActive: boolean;
-  @IsString() @IsOptional() role: string;
+  @IsString() @IsOptional() departmentId?: string;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsString() @IsOptional() role?: string;
   @IsString() @IsNotEmpty() roleId: string;
   @IsString() @IsNotEmpty() address: string;
-  
-
-}  
+}

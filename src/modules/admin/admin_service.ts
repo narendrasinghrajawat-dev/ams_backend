@@ -27,15 +27,36 @@ export class AdminService {
   ) {}
 
   // Create user (admin action)
-  async createUser(data: any, managerId: string) {
+  async createUser(data: any, managerId: any) {
+    const creatorId = typeof managerId === 'object' 
+      ? (managerId?.userId || managerId?.sub || managerId?._id || managerId?.email || 'admin')
+      : String(managerId || 'admin');
+
+    const cleanEmail = data.email?.trim().toLowerCase();
+    
+    // 1. Check if email already exists
+    const existingEmail = await this.userModel.findOne({ email: cleanEmail });
+    if (existingEmail) {
+      throw new BadRequestException('A user with this email already exists');
+    }
+
+    // 2. Check if username already exists
+    if (data.username) {
+      const existingUsername = await this.userModel.findOne({ username: data.username?.trim() });
+      if (existingUsername) {
+        throw new BadRequestException('A user with this username already exists');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const employeeId = await AdminHelper.generateEmployeeId(this.userModel);
 
     const userData = {
       ...data,
+      email: cleanEmail,
       employeeId,
       password: hashedPassword,
-      createdBy: managerId,
+      createdBy: creatorId,
       createdAt: new Date().toISOString(),
       joinedDate: new Date().toISOString(),
       isActive: true,
@@ -45,8 +66,8 @@ export class AdminService {
     const formattedUser = formatMongoDoc(savedUser);
 
     try {
-      const roleId = String(data.roleId);
-      const genderId = String(data.genderId);
+      const roleId = String(data.roleId || '1');
+      const genderId = String(data.genderId || '1');
 
       if (roleId === COMMON_STRING.USER_ID) {
         const annualLeaveBalance = genderId === COMMON_STRING.FEMALE_KEY ? 5 : 3; 

@@ -21,7 +21,8 @@ export class AdminController {
   @Roles(Role.Admin)
   @Post('create-user')
   createUser(@Body() dto: CreateUserDto, @Request() req: any) {
-    return this.adminService.createUser(dto, req.user); 
+    const managerId = req?.user?.userId || req?.user?.sub || req?.user?._id || req?.user?.email || 'admin';
+    return this.adminService.createUser(dto, managerId); 
   } 
 
   @UseGuards(JwtAuthGuard, RolesGuard)
