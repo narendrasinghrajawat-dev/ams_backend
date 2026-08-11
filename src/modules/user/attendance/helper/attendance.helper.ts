@@ -118,29 +118,23 @@ export class AttendanceHelper {
 
   // ---- Device validation ----
   static isSameDevice(loginDevice: DeviceInfoDto, punchDevice: DeviceInfoDto): boolean {
-    if (!loginDevice || !punchDevice) return false;
+    if (!loginDevice || !punchDevice) return true;
+
+    // Web platform
+    if (loginDevice.os === 'Web' || punchDevice.os === 'Web') {
+      return (loginDevice.os || '') === (punchDevice.os || '');
+    }
 
     const coreMatch =
-      loginDevice.os === punchDevice.os &&
-      loginDevice.version === punchDevice.version &&
-      Number(loginDevice.sdkInt) === Number(punchDevice.sdkInt) &&
-      loginDevice.model === punchDevice.model &&
-      loginDevice.brand === punchDevice.brand &&
-      loginDevice.manufacturer === punchDevice.manufacturer &&
-      (loginDevice.device || '') === (punchDevice.device || '');
+      (loginDevice.os || '') === (punchDevice.os || '') &&
+      (loginDevice.model || '') === (punchDevice.model || '') &&
+      (loginDevice.brand || '') === (punchDevice.brand || '');
 
     const idMatch =
-      loginDevice.uniqueId === punchDevice.uniqueId &&
-      loginDevice.androidId === punchDevice.androidId &&
-      Boolean(loginDevice.isPhysicalDevice) === Boolean(punchDevice.isPhysicalDevice);
+      (!loginDevice.uniqueId || !punchDevice.uniqueId) ||
+      loginDevice.uniqueId === punchDevice.uniqueId ||
+      loginDevice.androidId === punchDevice.androidId;
 
-    const fingerprintMatch =
-      !loginDevice.fingerprint || loginDevice.fingerprint === punchDevice.fingerprint;
-
-    const vendorIdMatch =
-      !loginDevice.identifierForVendor ||
-      loginDevice.identifierForVendor === punchDevice.identifierForVendor;
-
-    return coreMatch && idMatch && fingerprintMatch && vendorIdMatch;
+    return coreMatch && idMatch;
   }
 }
