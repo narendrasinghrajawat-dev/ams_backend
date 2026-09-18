@@ -9,12 +9,15 @@ export class UserDoc extends Document {
   @Prop({ required: true, unique: true, index: true }) email: string;
   @Prop() countryCode: string;
   @Prop() phoneNo: string;
+  @Prop() phone?: string;
   @Prop() username: string;
   @Prop({ unique: true, sparse: true }) employeeId: string;
   @Prop() password?: string;
   @Prop() dob?: string;
   @Prop() genderId?: string;
   @Prop() departmentId?: string;
+  @Prop() department?: string;
+  @Prop() designation?: string;
   @Prop({ default: true }) isActive: boolean;
   @Prop() role?: string;
   @Prop() roleId?: string;

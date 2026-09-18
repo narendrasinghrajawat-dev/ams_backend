@@ -11,26 +11,29 @@ export class CreateUserDto {
   @IsString() @IsNotEmpty() firstName: string;
   @IsOptional() @IsString() middleName?: string;
   @IsString() @IsNotEmpty() lastName: string;
-  @IsEmail() email: string;
+  @IsEmail() @IsNotEmpty() email: string;
 
   // contact
-  @IsString() @IsNotEmpty() countryCode: string;
-  @IsString() @IsNotEmpty() phoneNo: string;
-  @IsString() @IsNotEmpty() username: string;
+  @IsOptional() @IsString() countryCode?: string;
+  @IsOptional() @IsString() phoneNo?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() username?: string;
 
   @IsOptional() @IsString() employeeId?: string;
   
   // password (required)
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(4)
   password: string;
 
   @IsOptional() @IsString() dob?: string;
-  @IsString() @IsNotEmpty() genderId: string;
-  @IsString() @IsOptional() departmentId?: string;
+  @IsOptional() @IsString() genderId?: string;
+  @IsOptional() @IsString() departmentId?: string;
+  @IsOptional() @IsString() department?: string;
+  @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
-  @IsString() @IsOptional() role?: string;
-  @IsString() @IsNotEmpty() roleId: string;
-  @IsString() @IsNotEmpty() address: string;
+  @IsOptional() @IsString() role?: string;
+  @IsOptional() @IsString() roleId?: string;
+  @IsOptional() @IsString() address?: string;
 }

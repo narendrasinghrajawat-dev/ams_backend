@@ -26,17 +26,16 @@ export class UpdateUserDto {
 
   @IsOptional() @IsString() countryCode?: string;
   @IsOptional() @IsString() phoneNo?: string;
+  @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() username?: string;
 
   @IsOptional() @IsString() dob?: string;
   @IsOptional() @IsString() genderId?: string; 
   @IsOptional() @IsString() departmentId?: string;
+  @IsOptional() @IsString() department?: string;
+  @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsString() password?: string;
   @IsOptional() @IsString() role?: string;
   @IsOptional() @IsString() roleId?: string;
-  
-  @ValidateNested()
-  @Type(() => AddressDto)
-  @IsOptional()
-  address?: AddressDto;
+  @IsOptional() address?: any;
 }

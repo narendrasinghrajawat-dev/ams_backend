@@ -40,34 +40,53 @@ export class AdminService {
       throw new BadRequestException('A user with this email already exists');
     }
 
-    // 2. Check if username already exists
-    if (data.username) {
-      const existingUsername = await this.userModel.findOne({ username: data.username?.trim() });
-      if (existingUsername) {
+    // 2. Determine username
+    let finalUsername = data.username?.trim();
+    if (!finalUsername) {
+      finalUsername = cleanEmail?.split('@')[0] || `user_${Date.now()}`;
+    }
+
+    // Check if username already exists
+    const existingUsername = await this.userModel.findOne({ username: finalUsername });
+    if (existingUsername) {
+      if (data.username) {
         throw new BadRequestException('A user with this username already exists');
+      } else {
+        finalUsername = `${finalUsername}_${Math.floor(100 + Math.random() * 900)}`;
       }
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const employeeId = await AdminHelper.generateEmployeeId(this.userModel);
+    const employeeId = data.employeeId || await AdminHelper.generateEmployeeId(this.userModel);
+    const phoneVal = data.phoneNo || data.phone || '';
 
     const userData = {
       ...data,
+      phoneNo: phoneVal,
+      phone: phoneVal,
+      countryCode: data.countryCode || '+91',
+      username: finalUsername,
+      genderId: data.genderId || '1',
+      roleId: data.roleId ? String(data.roleId) : COMMON_STRING.USER_ID,
+      role: data.role || (String(data.roleId) === COMMON_STRING.ADMIN_ID ? 'Admin' : 'Employee'),
+      designation: data.designation || '',
+      department: data.department || '',
+      address: data.address || '',
       email: cleanEmail,
       employeeId,
       password: hashedPassword,
       createdBy: creatorId,
       createdAt: new Date().toISOString(),
-      joinedDate: new Date().toISOString(),
-      isActive: true,
+      joinedDate: data.joinedDate || new Date().toISOString(),
+      isActive: data.isActive !== undefined ? data.isActive : true,
     }; 
 
     const savedUser = await new this.userModel(userData).save();
     const formattedUser = formatMongoDoc(savedUser);
 
     try {
-      const roleId = String(data.roleId || '1');
-      const genderId = String(data.genderId || '1');
+      const roleId = String(userData.roleId || '1');
+      const genderId = String(userData.genderId || '1');
 
       if (roleId === COMMON_STRING.USER_ID) {
         const annualLeaveBalance = genderId === COMMON_STRING.FEMALE_KEY ? 5 : 3; 
@@ -103,10 +122,14 @@ export class AdminService {
         email: userData.email,
         countryCode: userData.countryCode,
         phoneNo: userData.phoneNo,
+        phone: userData.phone,
         username: userData.username,
+        employeeId: userData.employeeId,
         role: userData.role,
         roleId: userData.roleId,
         departmentId: userData.departmentId,
+        department: userData.department,
+        designation: userData.designation,
         address: userData.address,
         createdBy: userData.createdBy,
         createdAt: userData.createdAt,
@@ -123,10 +146,9 @@ export class AdminService {
     return formatMongoDoc(user);
   }
 
-  // Get all users with role "user" (admin list)
+  // Get all users (admin list)
   async getAllUsers() { 
     const users = await this.userModel.find({
-      roleId: COMMON_STRING.USER_ID,
       isActive: true,
     }).sort({ createdAt: -1 }).lean();
 
@@ -162,7 +184,13 @@ export class AdminService {
   // Update user by _key
   async updateUser(key: string, dto: any) {
     try {
-      const updated = await this.userModel.findByIdAndUpdate(key, dto, { new: true }).lean();
+      const updateData = { ...dto };
+      if (dto.phone && !dto.phoneNo) updateData.phoneNo = dto.phone;
+      if (dto.phoneNo && !dto.phone) updateData.phone = dto.phoneNo;
+      if (dto.password) {
+        updateData.password = await bcrypt.hash(dto.password, 10);
+      }
+      const updated = await this.userModel.findByIdAndUpdate(key, updateData, { new: true }).lean();
       if (!updated) {
         throw new NotFoundException(`User with key ${key} not found`);
       }
