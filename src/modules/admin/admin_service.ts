@@ -282,8 +282,10 @@ export class AdminService {
   }
 
   // Admin action on leave request
-  async adminActionOnLeaveRequest(data: AdminLeaveActionDto) {
-    const { leavesId, leavesStatus, approveByKey } = data;
+  async adminActionOnLeaveRequest(data: any) {
+    const leavesId = data.leavesId || data.leaveId;
+    const leavesStatus = data.leavesStatus || data.leaveStatus;
+    const approveByKey = data.approveByKey || data.adminKey;
 
     if (!leavesId) {
       throw new BadRequestException('leavesId is required');
@@ -293,7 +295,15 @@ export class AdminService {
     const approverByName = null; // optionally fetch user name
 
     // 1) Load leave doc
-    const leave = await this.applyLeavesModel.findById(leavesId).lean();
+    let leave: any = null;
+    try {
+      leave = await this.applyLeavesModel.findById(leavesId).lean();
+    } catch {
+      // If invalid ObjectId, try finding by _key or id
+    }
+    if (!leave) {
+      leave = await this.applyLeavesModel.findOne({ $or: [{ _id: leavesId }, { _key: leavesId }, { id: leavesId }] }).lean();
+    }
     if (!leave) {
       return { message: `Leave request with key ${leavesId} not found.`, statusCode: 404 };
     }
@@ -348,7 +358,7 @@ export class AdminService {
         actionDate,
         modifiedDate: actionDate,
       };
-      const updated = await this.applyLeavesModel.findByIdAndUpdate(leavesId, approvedPayload, { new: true }).lean();
+      const updated = await this.applyLeavesModel.findByIdAndUpdate(leave._id, approvedPayload, { new: true }).lean();
 
       return {
         message: 'Leave approved and balance deducted successfully.',
@@ -365,7 +375,7 @@ export class AdminService {
       actionDate,
       modifiedDate: actionDate,
     };
-    const updated = await this.applyLeavesModel.findByIdAndUpdate(leavesId, updatedFields, { new: true }).lean();
+    const updated = await this.applyLeavesModel.findByIdAndUpdate(leave._id, updatedFields, { new: true }).lean();
     return {
       message: 'Leave request status updated successfully.',
       statusCode: 200,
