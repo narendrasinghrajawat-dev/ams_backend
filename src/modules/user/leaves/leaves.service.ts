@@ -27,6 +27,13 @@ export class LeavesService {
       .sort({ createdAt: -1 })
       .lean();
 
+    const leaveTypeMap: Record<string, string> = {
+      '1': 'Casual/Sick Leave',
+      '2': 'Annual Leave',
+      '3': 'Earned/Paid Leave',
+      '4': 'Unpaid Leave',
+    };
+
     const formattedLeaves: any[] = [];
     for (const l of leaves) {
       const formatted = formatMongoDoc(l);
@@ -41,8 +48,10 @@ export class LeavesService {
           ].filter(Boolean).join(" ");
         }
       }
+      const leaveName = leaveTypeMap[String(formatted.leaveType)] || formatted.leaveType || 'General Leave';
       formattedLeaves.push({
         ...formatted,
+        leaveName,
         approverByName,
       });
     }

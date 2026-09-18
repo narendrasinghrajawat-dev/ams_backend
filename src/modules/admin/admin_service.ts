@@ -249,6 +249,13 @@ export class AdminService {
       isActive: true,
     }).sort({ createdAt: -1 }).lean();
 
+    const leaveTypeMap: Record<string, string> = {
+      '1': 'Casual/Sick Leave',
+      '2': 'Annual Leave',
+      '3': 'Earned/Paid Leave',
+      '4': 'Unpaid Leave',
+    };
+
     const formattedRequests: any[] = [];
     for (const r of requests) {
       const formatted = formatMongoDoc(r);
@@ -256,10 +263,13 @@ export class AdminService {
       const userName = userDoc
         ? [userDoc.firstName, userDoc.middleName, userDoc.lastName].filter(Boolean).join(" ")
         : "Unknown User";
+      const leaveName = leaveTypeMap[String(formatted.leaveType)] || formatted.leaveType || 'General Leave';
 
       formattedRequests.push({
         ...formatted,
         userName,
+        employeeName: userName,
+        leaveName,
       });
     }
 
@@ -381,6 +391,7 @@ export class AdminService {
       dataList.push({
         ...formatted,
         userName,
+        employeeName: userName,
       });
     }
 
@@ -400,6 +411,13 @@ export class AdminService {
       endDate: { $gte: startOfDay },
     }).sort({ createdDate: -1 }).lean();
 
+    const leaveTypeMap: Record<string, string> = {
+      '1': 'Casual/Sick Leave',
+      '2': 'Annual Leave',
+      '3': 'Earned/Paid Leave',
+      '4': 'Unpaid Leave',
+    };
+
     const dataList: any[] = [];
     for (const leave of leaves) {
       const formatted = formatMongoDoc(leave);
@@ -407,10 +425,13 @@ export class AdminService {
       const userName = userDoc
         ? [userDoc.firstName, userDoc.middleName, userDoc.lastName].filter(Boolean).join(" ")
         : "Unknown User";
+      const leaveName = leaveTypeMap[String(formatted.leaveType)] || formatted.leaveType || 'General Leave';
 
       dataList.push({
         ...formatted,
         userName,
+        employeeName: userName,
+        leaveName,
       });
     }
 
@@ -453,6 +474,7 @@ export class AdminService {
       dataList.push({
         ...formatted,
         userName,
+        employeeName: userName,
       });
     }
 

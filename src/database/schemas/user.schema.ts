@@ -24,6 +24,8 @@ export class UserDoc extends Document {
   @Prop() address?: string;
   @Prop() createdBy?: string;
   @Prop() joinedDate?: string;
+  @Prop() createdAt?: string;
+  @Prop() createdDate?: string;
   @Prop() deletedAt?: Date;
 }
 export const UserSchema = SchemaFactory.createForClass(UserDoc);

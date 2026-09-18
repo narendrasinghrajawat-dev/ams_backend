@@ -5,6 +5,8 @@ import * as bcrypt from 'bcrypt';
 import { UserDoc } from 'src/database/schemas/user.schema';
 import { HolidaysDoc } from 'src/database/schemas/holidays.schema';
 import { AttendanceDoc } from 'src/database/schemas/attendance.schema';
+import { ApplyLeavesDoc } from 'src/database/schemas/apply_leaves.schema';
+import { COMMON_STRING } from 'src/utills/constant/const_strings';
 
 @Injectable()
 export class UserService {
@@ -12,6 +14,7 @@ export class UserService {
     @InjectModel(UserDoc.name) private readonly userModel: Model<UserDoc>,
     @InjectModel(HolidaysDoc.name) private readonly holidayModel: Model<HolidaysDoc>,
     @InjectModel(AttendanceDoc.name) private readonly attendanceModel: Model<AttendanceDoc>,
+    @InjectModel(ApplyLeavesDoc.name) private readonly applyLeavesModel: Model<ApplyLeavesDoc>,
   ) {}
 
   /**
@@ -56,6 +59,15 @@ export class UserService {
       throw new Error('Invalid year');
     }
 
+    // 0️⃣ Fetch user profile to obtain joining date
+    const userDoc = await this.userModel.findById(userKey).lean();
+    let joinedDateStr: string | null = null;
+    if (userDoc?.joinedDate) {
+      joinedDateStr = userDoc.joinedDate.split('T')[0];
+    } else if (userDoc?.createdAt) {
+      joinedDateStr = new Date(userDoc.createdAt).toISOString().split('T')[0];
+    }
+
     const yearPrefix = `${year}-`;
 
     /* --------------------------------------------------
@@ -76,7 +88,39 @@ export class UserService {
     }
 
     /* --------------------------------------------------
-     2️⃣ Fetch attendance
+     2️⃣ Fetch approved leaves
+    -------------------------------------------------- */
+    const leaves = await this.applyLeavesModel.find({
+      userKey,
+      leaveStatus: COMMON_STRING.APPROVED_STATUS_KEY,
+      isActive: true,
+    }).lean();
+
+    const leaveMap = new Map<string, { leaveName: string; duration: string }>();
+    const leaveTypeNames: Record<string, string> = {
+      '1': 'Casual/Sick Leave',
+      '2': 'Annual Leave',
+      '3': 'Earned/Paid Leave',
+      '4': 'Unpaid Leave',
+    };
+
+    for (const l of leaves) {
+      if (!l.startDate || !l.endDate) continue;
+      const start = new Date(l.startDate.split('T')[0]);
+      const end = new Date(l.endDate.split('T')[0]);
+      const leaveName = leaveTypeNames[String(l.leaveType)] || l.leaveType || 'Leave';
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const curDateKey = d.toISOString().split('T')[0];
+        leaveMap.set(curDateKey, {
+          leaveName,
+          duration: l.leaveDurationsType || 'Full Day',
+        });
+      }
+    }
+
+    /* --------------------------------------------------
+     3️⃣ Fetch attendance
     -------------------------------------------------- */
     const punches = await this.attendanceModel.find({
       userKey,
@@ -85,13 +129,16 @@ export class UserService {
     }).lean();
 
     // Group punches by date (YYYY-MM-DD)
-    const attendanceMap = new Map<string, { punchIn?: string; punchOut?: string; totalMinutes?: number }>();
+    const attendanceMap = new Map<string, { punchIn?: string; punchOut?: string; totalMinutes?: number; isWFH?: boolean }>();
     for (const p of punches) {
       const dateKey = p.punchDate.split('T')[0];
       if (!attendanceMap.has(dateKey)) {
         attendanceMap.set(dateKey, {});
       }
       const dayData = attendanceMap.get(dateKey)!;
+      if (p.isWFH) {
+        dayData.isWFH = true;
+      }
       if (p.punchType === '1') {
         dayData.punchIn = p.punchTime;
       } else if (p.punchType === '2') {
@@ -119,9 +166,10 @@ export class UserService {
     }
 
     /* --------------------------------------------------
-     3️⃣ Build calendar MAP
+     4️⃣ Build calendar MAP
     -------------------------------------------------- */
     const data: Record<string, any> = {};
+    const todayStr = new Date().toISOString().split('T')[0];
 
     for (let month = 1; month <= 12; month++) {
       const daysInMonth = new Date(year, month, 0).getDate();
@@ -134,14 +182,36 @@ export class UserService {
           .toLocaleDateString('en-US', { weekday: 'long' })
           .toUpperCase();
 
-        const isWeekend = weekDay === 'SUNDAY';
+        const isWeekend = weekDay === 'SUNDAY' || weekDay === 'SATURDAY';
 
         const holiday = holidayMap.get(date);
         const attendanceData = attendanceMap.get(date);
+        const leaveData = leaveMap.get(date);
+
+        const isBeforeJoining = joinedDateStr ? date < joinedDateStr : false;
+
+        let status = 'future';
+        if (isBeforeJoining) {
+          status = 'not_joined';
+        } else if (attendanceData?.punchIn) {
+          status = 'present';
+        } else if (leaveData) {
+          status = 'leave';
+        } else if (holiday) {
+          status = 'holiday';
+        } else if (isWeekend) {
+          status = 'weekend';
+        } else if (date === todayStr) {
+          status = 'today';
+        } else if (date < todayStr) {
+          status = 'absent';
+        }
 
         data[date] = {
           date,
           day: weekDay,
+          status,
+          isBeforeJoining,
           isHoliday: !!holiday || isWeekend,
           holidayName: holiday
             ? holiday.name
@@ -154,12 +224,14 @@ export class UserService {
             ? 'WEEKOFF'
             : null,
           isWeekend,
-          punch: attendanceData
+          leave: leaveData || null,
+          punch: attendanceData?.punchIn
             ? {
                 punchIn: attendanceData.punchIn || null,
                 punchOut: attendanceData.punchOut || null,
                 totalMinutes: attendanceData.totalMinutes || 0,
                 duration: `${Math.floor((attendanceData.totalMinutes || 0) / 60)}h ${(attendanceData.totalMinutes || 0) % 60}m`,
+                isWFH: !!attendanceData.isWFH,
               }
             : null,
         };
@@ -167,13 +239,14 @@ export class UserService {
     }
 
     /* --------------------------------------------------
-     4️⃣ Final response
+     5️⃣ Final response
     -------------------------------------------------- */
     return {
       message: 'User Calendar Fetch Successful',
       statusCode: 200,
       data: {
         year,
+        joinedDate: joinedDateStr,
         data,
       },
     };
