@@ -56,12 +56,28 @@ export class AdminService {
       }
     }
 
+    if (!data.password) {
+      throw new BadRequestException('Password is required');
+    }
+
+    let employeeId = data.employeeId?.trim();
+    if (employeeId) {
+      const existingEmp = await this.userModel.findOne({ employeeId });
+      if (existingEmp) {
+        throw new BadRequestException(`Employee ID ${employeeId} already exists`);
+      }
+    } else {
+      employeeId = await AdminHelper.generateEmployeeId(this.userModel);
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const employeeId = data.employeeId || await AdminHelper.generateEmployeeId(this.userModel);
     const phoneVal = data.phoneNo || data.phone || '';
 
     const userData = {
       ...data,
+      firstName: data.firstName?.trim() || '',
+      middleName: data.middleName?.trim() || '',
+      lastName: data.lastName?.trim() || '',
       phoneNo: phoneVal,
       phone: phoneVal,
       countryCode: data.countryCode || '+91',
@@ -81,7 +97,18 @@ export class AdminService {
       isActive: data.isActive !== undefined ? data.isActive : true,
     }; 
 
-    const savedUser = await new this.userModel(userData).save();
+    let savedUser;
+    try {
+      savedUser = await new this.userModel(userData).save();
+    } catch (err: any) {
+      console.error('Failed to save user in MongoDB:', err);
+      if (err.code === 11000) {
+        const field = Object.keys(err.keyPattern || err.keyValue || {})[0] || 'field';
+        const val = err.keyValue ? err.keyValue[field] : '';
+        throw new BadRequestException(`A user with this ${field} (${val}) already exists.`);
+      }
+      throw new BadRequestException(err.message || 'Failed to create user');
+    }
     const formattedUser = formatMongoDoc(savedUser);
 
     try {
