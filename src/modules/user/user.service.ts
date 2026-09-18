@@ -188,12 +188,8 @@ export class UserService {
         const attendanceData = attendanceMap.get(date);
         const leaveData = leaveMap.get(date);
 
-        const isBeforeJoining = joinedDateStr ? date < joinedDateStr : false;
-
         let status = 'future';
-        if (isBeforeJoining) {
-          status = 'not_joined';
-        } else if (attendanceData?.punchIn) {
+        if (attendanceData?.punchIn) {
           status = 'present';
         } else if (leaveData) {
           status = 'leave';
@@ -211,7 +207,7 @@ export class UserService {
           date,
           day: weekDay,
           status,
-          isBeforeJoining,
+          isBeforeJoining: false,
           isHoliday: !!holiday || isWeekend,
           holidayName: holiday
             ? holiday.name
